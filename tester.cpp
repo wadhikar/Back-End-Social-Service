@@ -121,7 +121,7 @@ int delete_table (const string& addr, const string& table) {
 
   addr: Prefix of the URI (protocol, address, and port)
   table: Table in which to insert the entity
-  partition: Partition of the entity 
+  partition: Partition of the entity
   row: Row of the entity
   prop: Name of the property
   pstring: Value of the property, as a string
@@ -140,7 +140,7 @@ int put_entity(const string& addr, const string& table, const string& partition,
 
   addr: Prefix of the URI (protocol, address, and port)
   table: Table in which to insert the entity
-  partition: Partition of the entity 
+  partition: Partition of the entity
   row: Row of the entity
  */
 int delete_entity (const string& addr, const string& table, const string& partition, const string& row)  {
@@ -217,7 +217,7 @@ SUITE(GET) {
 		  + GetFixture::table + "/"
 		  + GetFixture::partition + "/"
 		  + GetFixture::row)};
-      
+
       CHECK_EQUAL(string("{\"")
 		  + GetFixture::property
 		  + "\":\""
@@ -271,9 +271,7 @@ SUITE(GET) {
     pair<status_code, value> result {
       do_request (methods::GET,
       string(GetFixture::addr)
-      + GetFixture::table + "/"
-      + GetFixture::partition + "/"
-      + "*")}; // "*" for row name
+      + GetFixture::table)};
 
       CHECK_EQUAL(string("{\"")
       + GetFixture::partition
@@ -281,9 +279,28 @@ SUITE(GET) {
       result.first.serialize());
       CHECK_EQUAL(status_codes::OK, result.first);
     }
+
+    /*
+      Test of GET all entities containing all specified properties
+    */
+
+    TEST_FIXTURE(GetFixture, GetAllSpecificProperties) {
+
+    string partition {"Katherines,The"};
+    string row {"Canada"};
+    string property {"Home"};
+    string prop_val {"Vancouver"};
+    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    assert (put_result == status_codes::OK);
+
+
     }
+
+
   }
-}
+
+
 
 /*
   Locate and run all tests
