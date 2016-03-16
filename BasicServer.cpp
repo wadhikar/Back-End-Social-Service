@@ -237,9 +237,11 @@ void handle_get(http_request message) {
     }
     if (values.size() > 0){
       message.reply(status_codes::OK, value::object(values));
+      return;
     }
     else{
       message.reply(status_codes::OK);
+      return;
     }
   }
 
