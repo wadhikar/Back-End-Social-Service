@@ -175,12 +175,12 @@ SUITE(GET) {
       int make_result {create_table(addr, table)};
       cerr << "create result " << make_result << endl;
       if (make_result != status_codes::Created && make_result != status_codes::Accepted) {
-	throw std::exception();
+        throw std::exception();
       }
       int put_result {put_entity (addr, table, partition, row, property, prop_val)};
       cerr << "put result " << put_result << endl;
       if (put_result != status_codes::OK) {
-	throw std::exception();
+        throw std::exception();
       }
     }
     ~GetFixture() {
@@ -252,6 +252,38 @@ SUITE(GET) {
     //CHECK_EQUAL(body.serialize(), string("{\"")+string(GetFixture::property)+ "\":\""+string(GetFixture::prop_val)+"\"}");
     CHECK_EQUAL(status_codes::OK, result.first);
     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
+  }
+
+  /*
+    Test of GET from specific partition
+    Essentially the same test as GetSingle
+  */
+  TEST_FIXTURE(GetFixture, GetSpecificPartition) {
+
+    string partition {"Katherines,The"};
+    string row {"Canada"};
+    string property {"Home"};
+    string prop_val {"Vancouver"};
+    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    assert (put_result == status_codes::OK);
+
+    pair<status_code, value> result {
+      do_request (methods::GET,
+      string(GetFixture::addr)
+      + GetFixture::table + "/"
+      + GetFixture::partition + "/"
+      + "*")}; // "*" for row name
+
+      CHECK_EQUAL(string("{\"")
+      + GetFixture::property
+      + "\":\""
+      + GetFixture::prop_val
+      + "\"}",
+      result.second.serialize());
+      CHECK_EQUAL(status_codes::OK, result.first);
+    }
+    }
   }
 }
 
