@@ -214,6 +214,11 @@ void handle_get(http_request message) {
   }
 
   //Get all entities from a specific partition.
+  if (paths.size() < 3) {
+    message.reply(status_codes::BadRequest);
+    return;
+  }
+
   if(paths[2] == "*"){
     table_query query {};
     table_query_iterator end;
@@ -229,6 +234,12 @@ void handle_get(http_request message) {
         key_vec.push_back(value::object(keys));
         ++it;
       }
+    }
+    if (values.size() > 0){
+      message.reply(status_codes::OK, value::object(values));
+    }
+    else{
+      message.reply(status_codes::OK);
     }
   }
 
