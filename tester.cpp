@@ -255,7 +255,7 @@ SUITE(GET) {
   }
 
   /*
-    Test of GET from specific partition
+    Test of GET all from specific partition
     Essentially the same test as GetSingle
   */
   TEST_FIXTURE(GetFixture, GetSpecificPartition) {
@@ -276,11 +276,9 @@ SUITE(GET) {
       + "*")}; // "*" for row name
 
       CHECK_EQUAL(string("{\"")
-      + GetFixture::property
-      + "\":\""
-      + GetFixture::prop_val
+      + GetFixture::partition
       + "\"}",
-      result.second.serialize());
+      result.first.serialize());
       CHECK_EQUAL(status_codes::OK, result.first);
     }
     }
