@@ -89,16 +89,16 @@ prop_vals_t get_properties (const table_entity::properties_type& properties, pro
       values.push_back(make_pair(v.first, value::string(v.second.str())));
     }
     else if(v.second.property_type() == edm_type::int32) {
-      values.push_back(make_pair(v.first, value::number(v.second.int32_value())));      
+      values.push_back(make_pair(v.first, value::number(v.second.int32_value())));
     }
     else if(v.second.property_type() == edm_type::int64) {
-      values.push_back(make_pair(v.first, value::number(v.second.int64_value())));      
+      values.push_back(make_pair(v.first, value::number(v.second.int64_value())));
     }
     else if(v.second.property_type() == edm_type::double_floating_point) {
-      values.push_back(make_pair(v.first, value::number(v.second.double_value())));      
+      values.push_back(make_pair(v.first, value::number(v.second.double_value())));
     }
     else if(v.second.property_type() == edm_type::boolean) {
-      values.push_back(make_pair(v.first, value::boolean(v.second.boolean_value())));      
+      values.push_back(make_pair(v.first, value::boolean(v.second.boolean_value())));
     }
     else {
       values.push_back(make_pair(v.first, value::string(v.second.str())));
@@ -115,7 +115,7 @@ prop_vals_t get_properties (const table_entity::properties_type& properties, pro
   Use C++ conversion utilities to convert to numbers or dates
   as necessary.
  */
-unordered_map<string,string> get_json_body(http_request message) {  
+unordered_map<string,string> get_json_body(http_request message) {
   unordered_map<string,string> results {};
   const http_headers& headers {message.headers()};
   auto content_type (headers.find("Content-Type"));
@@ -151,7 +151,7 @@ unordered_map<string,string> get_json_body(http_request message) {
   GET is the only request that has no command. All
   operands specify the value(s) to be retrieved.
  */
-void handle_get(http_request message) { 
+void handle_get(http_request message) {
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** GET " << path << endl;
   auto paths = uri::split_path(path);
@@ -167,24 +167,72 @@ void handle_get(http_request message) {
     return;
   }
 
-  // GET all entries in table
+  // GET all entries in table or GET all entities containing all specified properties
   if (paths.size() == 1) {
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     vector<value> key_vec;
-    while (it != end) {
-      cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
-      prop_vals_t keys {
-	make_pair("Partition",value::string(it->partition_key())),
-	make_pair("Row", value::string(it->row_key()))};
-      keys = get_properties(it->properties(), keys);
-      key_vec.push_back(value::object(keys));
-      ++it;
+    unordered_map<string,string> json_body {get_json_body (message)};//gets the JSON body
+
+    int matching_property_num = 0;
+
+    if(json_body.size() > 0){//if JSON body exits GET all entities containing all specified properties
+      while (it != end) {
+        matching_property_num = 0;
+        for (const auto v : json_body) {
+          for (const auto p : it->properties()) {// v is a pair<string,string> representing a property in the JSON object
+            if(v.first == p.first){
+              matching_property_num++;
+              break;
+            }
+          }
+        }
+        if(matching_property_num == json_body.size()){
+          prop_vals_t keys {
+      make_pair("Partition",value::string(it->partition_key())),
+      make_pair("Row", value::string(it->row_key()))};
+          keys = get_properties(it->properties(), keys);
+          key_vec.push_back(value::object(keys));
+        }
+        ++it;
+      }
+    }
+    else{
+      while (it != end) {
+        cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
+        prop_vals_t keys {
+    make_pair("Partition",value::string(it->partition_key())),
+    make_pair("Row", value::string(it->row_key()))};
+        keys = get_properties(it->properties(), keys);
+        key_vec.push_back(value::object(keys));
+        ++it;
+      }
     }
     message.reply(status_codes::OK, value::array(key_vec));
     return;
   }
+
+  //Get all entities from a specific partition.
+  if(paths[2] == "*"){
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+    vector<value> key_vec;
+    if(paths[1] == it->partition_key()){
+      while (it != end) {
+        cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
+        prop_vals_t keys {
+    make_pair("Partition",value::string(it->partition_key())),
+    make_pair("Row", value::string(it->row_key()))};
+        keys = get_properties(it->properties(), keys);
+        key_vec.push_back(value::object(keys));
+        ++it;
+      }
+    }
+  }
+
+
 
   // GET specific entry: Partition == paths[1], Row == paths[2]
   table_operation retrieve_operation {table_operation::retrieve_entity(paths[1], paths[2])};
@@ -197,7 +245,7 @@ void handle_get(http_request message) {
 
   table_entity entity {retrieve_result.entity()};
   table_entity::properties_type properties {entity.properties()};
-  
+
   // If the entity has any properties, return them as JSON
   prop_vals_t values (get_properties(properties));
   if (values.size() > 0)
@@ -316,7 +364,7 @@ void handle_delete(http_request message) {
     table_result op_result {table.execute(operation)};
 
     int code {op_result.http_status_code()};
-    if (code == status_codes::OK || 
+    if (code == status_codes::OK ||
 	code == status_codes::NoContent)
       message.reply(status_codes::OK);
     else
@@ -332,7 +380,7 @@ void handle_delete(http_request message) {
 
   Install handlers for the HTTP requests and open the listener,
   which processes each request asynchronously.
-  
+
   Wait for a carriage return, then shut the server down.
  */
 int main (int argc, char const * argv[]) {
