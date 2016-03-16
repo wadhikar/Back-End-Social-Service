@@ -320,7 +320,7 @@ void handle_put(http_request message) {
   }
 
 
-  if(paths[0] == Update_Property){  //////////////////////////////////ADD2
+  if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
