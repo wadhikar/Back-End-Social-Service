@@ -301,6 +301,17 @@ void handle_post(http_request message) {
 /*
   Top-level routine for processing all HTTP PUT requests.
  */
+
+
+
+  /*
+status_codes::OK (200): Table found and all entities extended with the specified name/value property
+  */
+
+const string Add_Property {"AddProperty"};/////////////////////
+const string Update_Property {"UpdateProperty"};
+
+
 void handle_put(http_request message) {
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** PUT " << path << endl;
@@ -318,6 +329,49 @@ void handle_put(http_request message) {
   }
 
   table_entity entity {paths[2], paths[3]};
+
+
+
+  if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
+
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+
+    while (it != end){
+      table_entity::properties_type& properties = it->properties();
+      for (const auto v: json_body){
+        if(properties[v.first] == entity_property {v.first}){ //already existing
+          properties[v.second] = entity_property {v.second}
+          message.reply(status_codes::OK);
+
+        }
+        else{ //not existing
+          properties[v.first] = entity_property {v.first};
+          properties[v.second] = entity_property {v.second};
+          message.reply(status_codes::OK);
+        }
+      }
+      it++;
+    }
+  }
+
+
+  if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+
+    while( it != end){
+      table_entity::properties_type& properties = it->properties();
+      if(properties[v.first] == entity_property {v.first}){
+        properties[v.second] == entity_property {v.second};
+        message.reply(status_codes::OK);
+      }
+      it++;
+    }
+  }
+
 
   // Update entity
   if (paths[0] == update_entity) {
