@@ -258,7 +258,7 @@ SUITE(GET) {
     Test of GET all from specific partition
     Essentially the same test as GetSingle
   */
-  TEST_FIXTURE(GetFixture, GetSpecificPartition) {
+  TEST_FIXTURE(GetFixture, GetAllSpecificPartition) {
 
     string partition {"Katherines,The"};
     string row {"Canada"};
@@ -271,13 +271,17 @@ SUITE(GET) {
     pair<status_code, value> result {
       do_request (methods::GET,
       string(GetFixture::addr)
-      + GetFixture::table)};
+      + GetFixture::table) + "/"
+		  + GetFixture::partition + "/"
+		  + "*"};
 
       CHECK_EQUAL(string("{\"")
       + GetFixture::partition
       + "\"}",
       result.first.serialize());
       CHECK_EQUAL(status_codes::OK, result.first);
+
+      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
     }
 
     /*
@@ -294,13 +298,21 @@ SUITE(GET) {
       cerr << "put result " << put_result << endl;
       assert (put_result == status_codes::OK);
 
+      pair<status_code, value> result {
+        do_request (methods::GET,
+        string(GetFixture::addr)
+        + GetFixture::table)};
+
+      bool wrongPropertyFlag {false};
       if (json_body.size () > 0) { // There was a body
         for (const auto v : json_body) {
-
-          
+          if (v != property) {
+            wrongPropertyFlag = true;
+          }
+        }
       }
-    }
 
+      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
     }
 
 
