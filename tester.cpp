@@ -286,14 +286,20 @@ SUITE(GET) {
 
     TEST_FIXTURE(GetFixture, GetAllSpecificProperties) {
 
-    string partition {"Katherines,The"};
-    string row {"Canada"};
-    string property {"Home"};
-    string prop_val {"Vancouver"};
-    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
-    cerr << "put result " << put_result << endl;
-    assert (put_result == status_codes::OK);
+      string partition {"Katherines,The"};
+      string row {"Canada"};
+      string property {"Home"};
+      string prop_val {"Vancouver"};
+      int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+      cerr << "put result " << put_result << endl;
+      assert (put_result == status_codes::OK);
 
+      if (json_body.size () > 0) { // There was a body
+        for (const auto v : json_body) {
+
+          
+      }
+    }
 
     }
 
