@@ -74,7 +74,7 @@ const string delete_entity {"DeleteEntity"};
 /*
   Cache of opened tables
  */
-TableCache table_cache {storage_connection_string};
+TableCache table_cache {};
 
 /*
   Convert properties represented in Azure Storage type
@@ -236,7 +236,7 @@ void handle_get(http_request message) {
       }
     }
 
-    message.reply(status_codes::OK, value::object(key_vec));
+    message.reply(status_codes::OK, value::array(key_vec));
     return;
 
 
