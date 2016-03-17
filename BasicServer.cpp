@@ -194,9 +194,9 @@ void handle_get(http_request message) {
 
     int matching_property_num = 0;//initialize number of matching properties
 
-
+    cout << "json_body.size(): " << json_body.size() << endl;
     //if JSON body exits GET all entities containing all specified properties
-    if(json_body.size() > 0){
+    if(json_body.size() != 0){
       while (it != end) {//goes through the table, entity by entity
         matching_property_num = 0;
         for (const auto v : json_body) {//goes through json body pair by pair
@@ -204,6 +204,7 @@ void handle_get(http_request message) {
             if(v.first == p.first){
               //increment by 1 whenever there's a matching property and break
               matching_property_num++;
+              cout << "it->partition_key: " << it->partition_key() << endl;
               break;
             }
           }
@@ -218,6 +219,7 @@ void handle_get(http_request message) {
         }
         ++it;
       }
+      cout << "matching_property_num: " << matching_property_num << endl;
     }
     //GET all entries in table
     else{
@@ -358,7 +360,7 @@ void handle_put(http_request message) {
               }
               else{ //if an entity does not exist,
                 properties[v.first] = entity_property {v.first};  //Add the entity
-                properties[v.second] = entity_property {v.second};  
+                properties[v.second] = entity_property {v.second};
                 message.reply(status_codes::OK);
               }
           }
@@ -382,7 +384,7 @@ void handle_put(http_request message) {
           for (const auto p : it->properties()) {
               if(v.first == p.first){ //If entity has a property matching the specific name,
                 properties[v.second] = entity_property {v.second};  //then the value of that property is set to the specific value
-                message.reply(status_codes::OK);  //Successful operation 
+                message.reply(status_codes::OK);  //Successful operation
               }
               // Else if an entity has a property matching, ignore.
           }
