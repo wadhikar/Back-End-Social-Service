@@ -315,6 +315,8 @@ void handle_put(http_request message) {
   cout << endl << "**** PUT " << path << endl;
   auto paths = uri::split_path(path);
   // Need at least an operation, table name, partition, and row
+  unordered_map<string,string> json_body {get_json_body (message)}; //getting json body
+
   if (paths.size() < 4) {
     message.reply(status_codes::BadRequest);
     return;
@@ -340,7 +342,7 @@ void handle_put(http_request message) {
       table_entity::properties_type& properties = it->properties();
       for (const auto v: json_body){
         if(properties[v.first] == entity_property {v.first}){ //already existing
-          properties[v.second] = entity_property {v.second}
+          properties[v.second] = entity_property {v.second};
           message.reply(status_codes::OK);
 
         }
@@ -362,9 +364,11 @@ void handle_put(http_request message) {
 
     while( it != end){
       table_entity::properties_type& properties = it->properties();
-      if(properties[v.first] == entity_property {v.first}){
-        properties[v.second] == entity_property {v.second};
-        message.reply(status_codes::OK);
+      for(const auto v: json_body){
+        if(properties[v.first] == entity_property {v.first}){
+          properties[v.second] == entity_property {v.second};
+          message.reply(status_codes::OK);
+        }  
       }
       it++;
     }
