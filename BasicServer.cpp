@@ -70,6 +70,8 @@ const string create_table {"CreateTable"};
 const string delete_table {"DeleteTable"};
 const string update_entity {"UpdateEntity"};
 const string delete_entity {"DeleteEntity"};
+const string Add_Property {"AddProperty"};
+const string Update_Property {"UpdateProperty"};
 
 /*
   Cache of opened tables
@@ -190,7 +192,7 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     vector<value> key_vec;
-    
+
     int matching_property_num = 0;
 
     //if JSON body exits GET all entities containing all specified properties
