@@ -74,7 +74,7 @@ const string delete_entity {"DeleteEntity"};
 /*
   Cache of opened tables
  */
-TableCache table_cache {storage_connection_string};
+TableCache table_cache {};
 
 /*
   Convert properties represented in Azure Storage type
@@ -235,12 +235,11 @@ void handle_get(http_request message) {
         ++it;
       }
     }
-    if (values.size() > 0){
-      message.reply(status_codes::OK, value::object(values));
-    }
-    else{
-      message.reply(status_codes::OK);
-    }
+
+    message.reply(status_codes::OK, value::array(key_vec));
+    return;
+
+
   }
 
 
@@ -331,7 +330,7 @@ void handle_put(http_request message) {
   table_entity entity {paths[2], paths[3]};
 
 
-
+/*
   if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
 
     table_query query {};
@@ -373,7 +372,7 @@ void handle_put(http_request message) {
       it++;
     }
   }
-
+*/
 
   // Update entity
   if (paths[0] == update_entity) {
