@@ -314,6 +314,8 @@ void handle_put(http_request message) {
   cout << endl << "**** PUT " << path << endl;
   auto paths = uri::split_path(path);
   // Need at least an operation, table name, partition, and row
+  unordered_map<string,string> json_body {get_json_body (message)}; //getting json body
+
   if (paths.size() < 4) {
     message.reply(status_codes::BadRequest);
     return;
@@ -329,52 +331,64 @@ void handle_put(http_request message) {
 
 
 /*
-  if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
+This name value pair will be added as a property to every entity in the specified table. 
+If an entity already has that property, whatever value it has already 
+will be replaced by the value provided in this object.
+*/
+if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
 
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
 
     while (it != end){
-      table_entity::properties_type& properties = it->properties();
+      table_entity::properties_type& properties = entity.properties();
       for (const auto v: json_body){
-        if(properties[v.first] == entity_property {v.first}){ //already existing
-          properties[v.second] = entity_property {v.second}
-          message.reply(status_codes::OK);
 
+        for (const auto p : it->properties()) {
+            if(v.first == p.first){
+              properties[v.second] = entity_property {v.second};
+              message.reply(status_codes::OK);
+            }
+            else{ //not existing
+              properties[v.first] = entity_property {v.first};
+              properties[v.second] = entity_property {v.second};
+              message.reply(status_codes::OK);
+            }
         }
-        else{ //not existing
-          properties[v.first] = entity_property {v.first};
-          properties[v.second] = entity_property {v.second};
-          message.reply(status_codes::OK);
-        }
-      }
+      }  
       it++;
     }
   }
 
-
+  /*if an entity has a property matching the specified name, the name
+  of that property is set to the specified value. 
+  */
   if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
 
     while( it != end){
-      table_entity::properties_type& properties = it->properties();
-      if(properties[v.first] == entity_property {v.first}){
-        properties[v.second] == entity_property {v.second};
-        message.reply(status_codes::OK);
-      }
+      table_entity::properties_type& properties = entity.properties();
+      for(const auto v: json_body){
+
+        for (const auto p : it->properties()) {
+            if(v.first == p.first){
+              properties[v.second] = entity_property {v.second};
+              message.reply(status_codes::OK);
+            }  
+        }
+      } 
       it++;
     }
   }
-*/
 
   // Update entity
   if (paths[0] == update_entity) {
     cout << "Update " << entity.partition_key() << " / " << entity.row_key() << endl;
     table_entity::properties_type& properties = entity.properties();
-    for (const auto v : get_json_body(message)) {
+    for (const auto v : json_body) {
       properties[v.first] = entity_property {v.second};
     }
 
