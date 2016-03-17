@@ -235,14 +235,11 @@ void handle_get(http_request message) {
         ++it;
       }
     }
-    if (values.size() > 0){
-      message.reply(status_codes::OK, value::object(values));
-      return;
-    }
-    else{
-      message.reply(status_codes::OK);
-      return;
-    }
+
+    message.reply(status_codes::OK, value::object(key_vec));
+    return;
+
+
   }
 
 
@@ -331,7 +328,7 @@ void handle_put(http_request message) {
   table_entity entity {paths[2], paths[3]};
 
 
-
+/*
   if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
 
     table_query query {};
@@ -371,7 +368,7 @@ void handle_put(http_request message) {
       it++;
     }
   }
-
+*/
 
   // Update entity
   if (paths[0] == update_entity) {
