@@ -247,11 +247,13 @@ SUITE(GET) {
     //cout << "Get All result.second: " << result.second << endl;
     CHECK(result.second.is_array());
     CHECK_EQUAL(2, result.second.as_array().size());
+
     /*
       Checking the body is not well-supported by UnitTest++, as we have to test
       independent of the order of returned values.
      */
     //CHECK_EQUAL(body.serialize(), string("{\"")+string(GetFixture::property)+ "\":\""+string(GetFixture::prop_val)+"\"}");
+
     CHECK_EQUAL(status_codes::OK, result.first);
     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
   }
@@ -262,6 +264,7 @@ SUITE(GET) {
   */
   TEST_FIXTURE(GetFixture, GetAllSpecificPartition) {
 
+    /*
     // Basic cases
     string partition {"Katherines,The"};
     string row {"Canada"};
@@ -294,7 +297,40 @@ SUITE(GET) {
     int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
     cerr << "put result4 " << put_result4 << endl;
     assert (put_result4 == status_codes::OK);
+    */
 
+    // Edge case: 0 matches
+    string partition {"Katherines,The"};
+    string row {"Canada"};
+    string property {"Home"};
+    string prop_val {"Vancouver"};
+    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    assert (put_result == status_codes::OK);
+
+    string partition2 {"Gaga,Lady"};
+    string row2 {"Canada"};
+    string property2 {"Home"};
+    string prop_val2 {"Surrey"};
+    int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
+    cerr << "put result2 " << put_result2 << endl;
+    assert (put_result2 == status_codes::OK);
+
+    string partition3 {"Katherines,The"};
+    string row3 {"Canada"};
+    string property3 {"Home"};
+    string prop_val3 {"Vancouver"};
+    int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
+    cerr << "put result3 " << put_result3 << endl;
+    assert (put_result3 == status_codes::OK);
+
+    string partition4 {"Parks,Rosa"};
+    string row4 {"Sweden"};
+    string property4 {"Gender"};
+    string prop_val4 {"Female"};
+    int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
+    cerr << "put result4 " << put_result4 << endl;
+    assert (put_result4 == status_codes::OK);
 
 
     pair<status_code, value> result {

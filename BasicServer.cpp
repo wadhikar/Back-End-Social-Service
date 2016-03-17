@@ -190,8 +190,7 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     vector<value> key_vec;
-    unordered_map<string,string> json_body {get_json_body (message)};//gets the JSON body
-
+    
     int matching_property_num = 0;
 
     //if JSON body exits GET all entities containing all specified properties
