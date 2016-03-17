@@ -194,7 +194,9 @@ void handle_get(http_request message) {
     table_query_iterator it = table.execute_query(query);
     vector<value> key_vec;
 
+
     int matching_property_num = 0;//initialize number of matching properties
+
 
     //if JSON body exits GET all entities containing all specified properties
     if(json_body.size() > 0){
