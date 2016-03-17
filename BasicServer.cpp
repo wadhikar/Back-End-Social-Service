@@ -70,7 +70,8 @@ const string create_table {"CreateTable"};
 const string delete_table {"DeleteTable"};
 const string update_entity {"UpdateEntity"};
 const string delete_entity {"DeleteEntity"};
-
+const string Update_Property {"UpdateProperty"};
+const string Add_Property {"AddProperty"};
 /*
   Cache of opened tables
  */
@@ -180,7 +181,7 @@ void handle_get(http_request message) {
 
   cloud_table table {table_cache.lookup_table(paths[0])};
   if ( ! table.exists()) {
-    message.reply(status_codes::NotFound);
+    message.reply(status_codes::NotFound);  //if table does not exist
     return;
   }
 
@@ -255,7 +256,7 @@ void handle_get(http_request message) {
   }
   // GET specific entry: Partition == paths[1], Row == paths[2]
   if (paths.size() != 3) {
-    message.reply (status_codes::BadRequest);
+    message.reply (status_codes::BadRequest); //does not have adequate information
     return;
   }
 
@@ -333,11 +334,9 @@ void handle_put(http_request message) {
   table_entity entity {paths[2], paths[3]};
 
   /*
-  This name value pair will be added as a property to every entity in the specified table.
-  If an entity already has that property, whatever value it has already
-  will be replaced by the value provided in this object.
+  <Add the specific property to all entities>
   */
-  if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
+  if(paths[0] == Add_Property){
 
       table_query query {};
       table_query_iterator end;
@@ -345,46 +344,49 @@ void handle_put(http_request message) {
 
       while (it != end){
         table_entity::properties_type& properties = entity.properties();
-        for (const auto v: json_body){
+
+        for (const auto v: json_body){  //nested loop, comparing all the entities with property
 
           for (const auto p : it->properties()) {
-              if(v.first == p.first){
-                properties[v.second] = entity_property {v.second};
-                message.reply(status_codes::OK);
+              if(v.first == p.first){ // If an entity already has the property,
+                properties[v.second] = entity_property {v.second}; // replace it by the value provided
+                message.reply(status_codes::OK);  //Successful Operation
               }
-              else{ //not existing
-                properties[v.first] = entity_property {v.first};
-                properties[v.second] = entity_property {v.second};
+              else{ //if an entity does not exist,
+                properties[v.first] = entity_property {v.first};  //Add the entity
+                properties[v.second] = entity_property {v.second};  
                 message.reply(status_codes::OK);
               }
           }
         }
-        it++;
+        it++; //Increment for iterator
       }
     }
 
-    /*if an entity has a property matching the specified name, the name
-    of that property is set to the specified value.
+    /*
+    <Update the specific property in all entities>
     */
-    if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
+    if(paths[0] == Update_Property){
       table_query query {};
       table_query_iterator end;
       table_query_iterator it = table.execute_query(query);
 
       while( it != end){
         table_entity::properties_type& properties = entity.properties();
-        for(const auto v: json_body){
+        for(const auto v: json_body){ //Nested loop, comparing all the entities with property
 
           for (const auto p : it->properties()) {
-              if(v.first == p.first){
-                properties[v.second] = entity_property {v.second};
-                message.reply(status_codes::OK);
+              if(v.first == p.first){ //If entity has a property matching the specific name,
+                properties[v.second] = entity_property {v.second};  //then the value of that property is set to the specific value
+                message.reply(status_codes::OK);  //Successful operation 
               }
+              // Else if an entity has a property matching, ignore.
           }
         }
-        it++;
+        it++; //Increment for iterator
       }
     }
+
 
   // Update entity
   if (paths[0] == update_entity) {
