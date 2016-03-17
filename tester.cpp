@@ -271,14 +271,17 @@ SUITE(GET) {
     pair<status_code, value> result {
       do_request (methods::GET,
       string(GetFixture::addr)
-      + GetFixture::table) + "/"
+      + GetFixture::table + "/"
 		  + GetFixture::partition + "/"
-		  + "*"};
+		  + "*")};
 
-      CHECK_EQUAL(string("{\"")
-      + GetFixture::partition
-      + "\"}",
-      result.first.serialize());
+      CHECK(result.second.is_array());
+      CHECK_EQUAL(2, result.second.as_array().size());
+
+      // CHECK_EQUAL(string("{\"")
+      // + GetFixture::partition
+      // + "\"}",
+      // result.second.serialize());
       CHECK_EQUAL(status_codes::OK, result.first);
 
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
@@ -303,14 +306,20 @@ SUITE(GET) {
         string(GetFixture::addr)
         + GetFixture::table)};
 
-      bool wrongPropertyFlag {false};
-      if (json_body.size () > 0) { // There was a body
-        for (const auto v : json_body) {
-          if (v != property) {
-            wrongPropertyFlag = true;
-          }
-        }
-      }
+      CHECK(result.second.is_array());
+      CHECK_EQUAL(2, result.second.as_array().size());
+
+      cout << "result.second:" << result.second << endl;
+      //cout << "result.second.as_array:" ;<< result.second.as_array() << endl;
+
+      // bool wrongPropertyFlag {false};
+      // if (json_body.size () > 0) { // There was a body
+      //   for (const auto v : json_body) {
+      //     if (v != property) {
+      //       wrongPropertyFlag = true;
+      //     }
+      //   }
+      // }
 
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
     }
