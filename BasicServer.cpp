@@ -21,7 +21,6 @@
 #include <was/table.h>
 
 #include "TableCache.h"
-#include "config.h"
 #include "make_unique.h"
 
 #include "azure_keys.h"
@@ -395,20 +394,27 @@ void handle_put(http_request message) {
 
 
   // Update entity
-  if (paths[0] == update_entity) {
-    cout << "Update " << entity.partition_key() << " / " << entity.row_key() << endl;
-    table_entity::properties_type& properties = entity.properties();
-    for (const auto v : json_body) {
-      properties[v.first] = entity_property {v.second};
+  try {
+    if (paths[0] == update_entity) {
+      cout << "Update " << entity.partition_key() << " / " << entity.row_key() << endl;
+      table_entity::properties_type& properties = entity.properties();
+      for (const auto v : json_body) {
+	properties[v.first] = entity_property {v.second};
+      }
+
+      table_operation operation {table_operation::insert_or_merge_entity(entity)};
+      table_result op_result {table.execute(operation)};
+
+      message.reply(status_codes::OK);
     }
-
-    table_operation operation {table_operation::insert_or_merge_entity(entity)};
-    table_result op_result {table.execute(operation)};
-
-    message.reply(status_codes::OK);
+    else {
+      message.reply(status_codes::BadRequest);
+    }
   }
-  else {
-    message.reply(status_codes::BadRequest);
+  catch (const storage_exception& e)
+  {
+    cout << "Azure Table Storage error: " << e.what() << endl;
+    message.reply(status_codes::InternalError);
   }
 }
 
