@@ -55,11 +55,15 @@ using prop_str_vals_t = vector<pair<string,string>>;
 constexpr const char* def_url = "http://localhost:34570";
 
 const string auth_table_name {"AuthTable"};
+//The table storing userID and password data. The table has only one partition,userIDin which 
+// all entities are placed. The row key is the userID.
 const string auth_table_userid_partition {"Userid"};
-const string auth_table_password_prop {"Password"};
-const string auth_table_partition_prop {"DataPartition"};
+const string auth_table_password_prop {"Password"}; //password for userid
+const string auth_table_partition_prop {"DataPartition"}; //combined with datarow,
+// the key for the single entity that this userid can access in DataTable.
 const string auth_table_row_prop {"DataRow"};
 const string data_table_name {"DataTable"};
+//the table whose access is controlled by the authentication server.
 
 const string get_read_token_op {"GetReadToken"};
 const string get_update_token_op {"GetUpdateToken"};
@@ -172,21 +176,73 @@ pair<status_code,string> do_get_token (const cloud_table& data_table,
 /*
   Top-level routine for processing all HTTP GET requests.
  */
+
 void handle_get(http_request message) { 
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** AuthServer GET " << path << endl;
   auto paths = uri::split_path(path);
+
   // Need at least an operation and userid
+  //path[0] = command; path[1] = userid
   if (paths.size() < 2) {
     message.reply(status_codes::BadRequest);
     return;
   }
-  message.reply(status_codes::NotImplemented);
+  else if(paths[0] == get_read_token_op){
+    cloud_table table {auth_table_name.lookup_table(paths[1])}; //look up userid
+    value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
+    //copied this line from tester.cpp. wat
+
+    if ( ! table.exists()) {
+      message.reply(status_codes::NotFound);  //userid not found
+      return;
+    }
+    else{ //userid exists
+      //
+      //if the password matches:
+      if(table.password == password){ //idk about this
+        do_get_token(table,auth_table_partition_prop,auth_table_row_prop);
+        // this function creates a token and prints it
+        // not sure about those parameters
+      }
+      //return token
+      //The response body will be a JSON object containing the single property token, 
+      //whose value is a string representing the token. Azure tokens are about 100 characters long.
+      message.reply(status_codes::OK);
+    }
+  }
 }
+
+
+
+//2. GET an update token. 
+
+pair<status_code,string> get_update_token(const string& addr,  const string& userid, const string& password) {
+
+  value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
+  pair<status_code,value> result {do_request (methods::GET,
+                                              addr +
+                                              get_update_token_op + "/" +
+                                              userid,
+                                              pwd
+                                              )};
+  cerr << "token " << result.second << endl;
+  if (result.first != status_codes::OK)
+    return make_pair (result.first, "");
+  else {
+    string token {result.second["token"].as_string()};
+    return make_pair (result.first, token);
+  }
+}
+
+
+
+
 
 /*
   Top-level routine for processing all HTTP POST requests.
  */
+
 void handle_post(http_request message) {
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** POST " << path << endl;
@@ -195,6 +251,7 @@ void handle_post(http_request message) {
 /*
   Top-level routine for processing all HTTP PUT requests.
  */
+
 void handle_put(http_request message) {
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** PUT " << path << endl;
@@ -203,12 +260,14 @@ void handle_put(http_request message) {
 /*
   Top-level routine for processing all HTTP DELETE requests.
  */
+
 void handle_delete(http_request message) {
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** DELETE " << path << endl;
 }
 
 /*
+
   Main authentication server routine
 
   Install handlers for the HTTP requests and open the listener,
