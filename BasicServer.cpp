@@ -70,7 +70,8 @@ const string create_table {"CreateTable"};
 const string delete_table {"DeleteTable"};
 const string update_entity {"UpdateEntity"};
 const string delete_entity {"DeleteEntity"};
-
+const string Update_Property {"UpdateProperty"};
+const string Add_Property {"AddProperty"};
 /*
   Cache of opened tables
  */
@@ -160,10 +161,12 @@ void handle_get(http_request message) {
     message.reply(status_codes::BadRequest);
     return;
   }
-
+  //initialize json_body
+  unordered_map<string,string> json_body {get_json_body (message)};
+  //look up table and check if table exists or not
   cloud_table table {table_cache.lookup_table(paths[0])};
   if ( ! table.exists()) {
-    message.reply(status_codes::NotFound);
+    message.reply(status_codes::NotFound);//reply NotFound status if table doesn't exist
     return;
   }
 
@@ -175,19 +178,24 @@ void handle_get(http_request message) {
     vector<value> key_vec;
     unordered_map<string,string> json_body {get_json_body (message)};//gets the JSON body
 
-    int matching_property_num = 0;
+    int matching_property_num = 0;//initialize number of matching properties
 
-    if(json_body.size() > 0){//if JSON body exits GET all entities containing all specified properties
-      while (it != end) {
+    cout << "json_body.size(): " << json_body.size() << endl;
+    //if JSON body exits GET all entities containing all specified properties
+    if(json_body.size() != 0){
+      while (it != end) {//goes through the table, entity by entity
         matching_property_num = 0;
-        for (const auto v : json_body) {
-          for (const auto p : it->properties()) {// v is a pair<string,string> representing a property in the JSON object
+        for (const auto v : json_body) {//goes through json body pair by pair
+          for (const auto p : it->properties()) {//goes through all the properties in each entity
             if(v.first == p.first){
+              //increment by 1 whenever there's a matching property and break
               matching_property_num++;
+              cout << "it->partition_key: " << it->partition_key() << endl;
               break;
             }
           }
         }
+        //if all property names in JSON are included in the entity push keys to key_vec
         if(matching_property_num == json_body.size()){
           prop_vals_t keys {
       make_pair("Partition",value::string(it->partition_key())),
@@ -197,7 +205,9 @@ void handle_get(http_request message) {
         }
         ++it;
       }
+      cout << "matching_property_num: " << matching_property_num << endl;
     }
+    //GET all entries in table
     else{
       while (it != end) {
         cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
@@ -212,12 +222,40 @@ void handle_get(http_request message) {
     message.reply(status_codes::OK, value::array(key_vec));
     return;
   }
+  //needs at least a table, partition, and a row
+  if (paths.size() < 3) {
+    message.reply (status_codes::BadRequest);
+    return;
+  }
+  //Get all entities containing all specified properties:
+  if(paths[2] == "*"){
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+    vector<value> key_vec;
+    //if partition name the entity equals the parameter partition push keys to key_vec
+    while (it != end) {
+      cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
+      prop_vals_t keys {
+  make_pair("Partition",value::string(it->partition_key())),
+  make_pair("Row", value::string(it->row_key()))};
+      keys = get_properties(it->properties(), keys);
+      if(paths[1] == it->partition_key()){
+        key_vec.push_back(value::object(keys));
+      }
 
+      ++it;
+    }
+
+    message.reply(status_codes::OK, value::array(key_vec));
+    return;
+  }
   //Get all entities from a specific partition.
   if (paths.size() < 3) {
     message.reply(status_codes::BadRequest);
     return;
   }
+  // GET specific entry: Partition == paths[1], Row == paths[2]
 
   if(paths[2] == "*"){
     table_query query {};
@@ -321,6 +359,8 @@ void handle_put(http_request message) {
     return;
   }
 
+  unordered_map<string,string> json_body {get_json_body (message)};
+
   cloud_table table {table_cache.lookup_table(paths[1])};
   if ( ! table.exists()) {
     message.reply(status_codes::NotFound);
@@ -329,60 +369,59 @@ void handle_put(http_request message) {
 
   table_entity entity {paths[2], paths[3]};
 
-
-/*
-This name value pair will be added as a property to every entity in the specified table. 
-If an entity already has that property, whatever value it has already 
-will be replaced by the value provided in this object.
-*/
-if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
-
-    table_query query {};
-    table_query_iterator end;
-    table_query_iterator it = table.execute_query(query);
-
-    while (it != end){
-      table_entity::properties_type& properties = entity.properties();
-      for (const auto v: json_body){
-
-        for (const auto p : it->properties()) {
-            if(v.first == p.first){
-              properties[v.second] = entity_property {v.second};
-              message.reply(status_codes::OK);
-            }
-            else{ //not existing
-              properties[v.first] = entity_property {v.first};
-              properties[v.second] = entity_property {v.second};
-              message.reply(status_codes::OK);
-            }
-        }
-      }  
-      it++;
-    }
-  }
-
-  /*if an entity has a property matching the specified name, the name
-  of that property is set to the specified value. 
+  /*
+  <Add the specific property to all entities>
   */
-  if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
-    table_query query {};
-    table_query_iterator end;
-    table_query_iterator it = table.execute_query(query);
+  if(paths[0] == Add_Property){
 
-    while( it != end){
-      table_entity::properties_type& properties = entity.properties();
-      for(const auto v: json_body){
+      table_query query {};
+      table_query_iterator end;
+      table_query_iterator it = table.execute_query(query);
 
-        for (const auto p : it->properties()) {
-            if(v.first == p.first){
-              properties[v.second] = entity_property {v.second};
-              message.reply(status_codes::OK);
-            }  
+      while (it != end){
+        table_entity::properties_type& properties = entity.properties();
+
+        for (const auto v: json_body){  //nested loop, comparing all the entities with property
+
+          for (const auto p : it->properties()) {
+              if(v.first == p.first){ // If an entity already has the property,
+                properties[v.second] = entity_property {v.second}; // replace it by the value provided
+                message.reply(status_codes::OK);  //Successful Operation
+              }
+              else{ //if an entity does not exist,
+                properties[v.first] = entity_property {v.first};  //Add the entity
+                properties[v.second] = entity_property {v.second};
+                message.reply(status_codes::OK);
+              }
+          }
         }
-      } 
-      it++;
+        it++; //Increment for iterator
+      }
     }
-  }
+
+    /*
+    <Update the specific property in all entities>
+    */
+    if(paths[0] == Update_Property){
+      table_query query {};
+      table_query_iterator end;
+      table_query_iterator it = table.execute_query(query);
+
+      while( it != end){
+        table_entity::properties_type& properties = entity.properties();
+        for(const auto v: json_body){ //Nested loop, comparing all the entities with property
+
+          for (const auto p : it->properties()) {
+              if(v.first == p.first){ //If entity has a property matching the specific name,
+                properties[v.second] = entity_property {v.second};  //then the value of that property is set to the specific value
+                message.reply(status_codes::OK);  //Successful operation
+              }
+              // Else if an entity has a property matching, ignore.
+          }
+        }
+        it++; //Increment for iterator
+      }
+    }
 
   // Update entity
   if (paths[0] == update_entity) {
