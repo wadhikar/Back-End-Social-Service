@@ -378,6 +378,7 @@ void handle_put(http_request message) {
       else
         message.reply(status_codes::InternalError);
     }
+    return;
   }
 
   /*
@@ -385,53 +386,57 @@ void handle_put(http_request message) {
   If an entity already has that property, whatever value it has already
   will be replaced by the value provided in this object.
   */
-  if(paths[0] == Add_Property){ //////////////////////////////////////ADD1
+  if(paths[0] == Add_Property){
+    message.reply(status_codes::NotImplemented);
+    return;
 
-      table_query query {};
-      table_query_iterator end;
-      table_query_iterator it = table.execute_query(query);
-
-      while (it != end){
-        table_entity::properties_type& properties = entity.properties();
-        for (const auto v: json_body){
-
-          for (const auto p : it->properties()) {
-              if(v.first == p.first){
-                properties[v.second] = entity_property {v.second};
-                message.reply(status_codes::OK);
-              }
-              else{ //not existing
-                properties[v.first] = entity_property {v.first};
-                properties[v.second] = entity_property {v.second};
-                message.reply(status_codes::OK);
-              }
-          }
-        }
-        it++;
-      }
+      // table_query query {};
+      // table_query_iterator end;
+      // table_query_iterator it = table.execute_query(query);
+      //
+      // while (it != end){
+      //   table_entity::properties_type& properties = entity.properties();
+      //   for (const auto v: json_body){
+      //
+      //     for (const auto p : it->properties()) {
+      //         if(v.first == p.first){
+      //           properties[v.second] = entity_property {v.second};
+      //           message.reply(status_codes::OK);
+      //         }
+      //         else{ //not existing
+      //           properties[v.first] = entity_property {v.first};
+      //           properties[v.second] = entity_property {v.second};
+      //           message.reply(status_codes::OK);
+      //         }
+      //     }
+      //   }
+      //   it++;
+      // }
     }
 
     /*if an entity has a property matching the specified name, the name
     of that property is set to the specified value.
     */
     if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
-      table_query query {};
-      table_query_iterator end;
-      table_query_iterator it = table.execute_query(query);
-
-      while( it != end){
-        table_entity::properties_type& properties = entity.properties();
-        for(const auto v: json_body){
-
-          for (const auto p : it->properties()) {
-              if(v.first == p.first){
-                properties[v.second] = entity_property {v.second};
-                message.reply(status_codes::OK);
-              }
-          }
-        }
-        it++;
-      }
+      message.reply(status_codes::NotImplemented);
+      return;
+      // table_query query {};
+      // table_query_iterator end;
+      // table_query_iterator it = table.execute_query(query);
+      //
+      // while( it != end){
+      //   table_entity::properties_type& properties = entity.properties();
+      //   for(const auto v: json_body){
+      //
+      //     for (const auto p : it->properties()) {
+      //         if(v.first == p.first){
+      //           properties[v.second] = entity_property {v.second};
+      //           message.reply(status_codes::OK);
+      //         }
+      //     }
+      //   }
+      //   it++;
+      // }
     }
 
   // Update entity
