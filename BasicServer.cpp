@@ -291,8 +291,8 @@ void handle_get(http_request message) {
     else
       message.reply(status_codes::OK);
   }else if (path2[0] == read_entity_auth){
-    //ReadEntityAuth
-    if(paths.size() < 4){
+    //GET ReadEntityAuth
+    if(paths.size() < 4){//badrequest if not enough parameters
       message.reply(status_codes::BadRequest);
       return;
     }
@@ -367,10 +367,10 @@ void handle_put(http_request message) {
 
 
   if(paths[0] == update_entity_auth){
-    try{
+    try{//reply status code which update_with_token (message, tables_endpoint, json_body) returns
       message.reply( update_with_token (message, tables_endpoint, json_body));
     }
-    catch (const storage_exception& e) {
+    catch (const storage_exception& e) {//catch exception
       cout << "Azure Table Storage error: " << e.what() << endl;
       cout << e.result().extended_error().message() << endl;
       if (e.result().http_status_code() == status_codes::Forbidden)
