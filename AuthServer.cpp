@@ -178,6 +178,8 @@ pair<status_code,string> do_get_token (const cloud_table& data_table,
  */
 
 void handle_get(http_request message) { 
+
+
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** AuthServer GET " << path << endl;
   auto paths = uri::split_path(path);
@@ -218,9 +220,9 @@ following differences:
 
 Operation : GetUpdateToken
 Response status_codes::OK : The returned token permits update operations as well as reads
-
 */
-    else if (paths[0] == get_update_token_op){    //#2, Get an update token
+
+    else if (paths[0] == get_update_token_op){
       table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
@@ -239,36 +241,8 @@ Response status_codes::OK : The returned token permits update operations as well
     }
     message.reply(status_codes::NotFound);  //userid not found
 
-
     }
 }
-
-
-
-
-
-  
-
-// pair<status_code,string> GetUpdateToken(const string& addr,  const string& userid, const string& password) {
-
-//   value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
-//   pair<status_code,value> result {do_request (methods::GET,
-//                                               addr +
-//                                               get_update_token_op + "/" +
-//                                               userid,
-//                                               pwd
-//                                               )};
-//   cerr << "token " << result.second << endl;
-//   if (result.first != status_codes::OK)
-//     return make_pair (result.first, "");
-//   else {
-//     string token {result.second["token"].as_string()};
-//     return make_pair (result.first, token);
-//   }
-// }
-
-
-
 
 
 /*
