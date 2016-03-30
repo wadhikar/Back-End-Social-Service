@@ -189,15 +189,16 @@ void handle_get(http_request message) {
     message.reply(status_codes::BadRequest);
     return;
   }
-  else if(paths[0] == get_read_token_op){
+  else if(paths[0] == get_read_token_op || ){
 
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     while (it != end) {
         prop_vals_t keys {
-          if(value::string(it->partition_key()) == paths[1] && value::string(it->row_key()) == json_body.second){
+          if(value::string(it->row_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
             //if userid + password both matches?
+
             do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
             message.reply(status_codes::OK);
             return;
@@ -206,29 +207,65 @@ void handle_get(http_request message) {
       ++it;
     }
     message.reply(status_codes::NotFound);  //userid not found
-}
 
 
 
+/*
 //2. GET an update token. 
+/*
+This operation has the same specification as 'Get a read token', except for the 
+following differences:
 
-pair<status_code,string> get_update_token(const string& addr,  const string& userid, const string& password) {
+Operation : GetUpdateToken
+Response status_codes::OK : The returned token permits update operations as well as reads
 
-  value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
-  pair<status_code,value> result {do_request (methods::GET,
-                                              addr +
-                                              get_update_token_op + "/" +
-                                              userid,
-                                              pwd
-                                              )};
-  cerr << "token " << result.second << endl;
-  if (result.first != status_codes::OK)
-    return make_pair (result.first, "");
-  else {
-    string token {result.second["token"].as_string()};
-    return make_pair (result.first, token);
-  }
+*/
+    else if (paths[0] == get_update_token_op){    //#2, Get an update token
+      table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+    while (it != end) {
+        prop_vals_t keys {
+          if(value::string(it->partition_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
+            //if userid + password both matches?
+            do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop,table_shared_access_policy::permission::read|
+                table_shared_access_policy::permissions::update);
+
+            message.reply(status_codes::OK);
+            return;
+          }
+        }
+      ++it;
+    }
+    message.reply(status_codes::NotFound);  //userid not found
+
+
+    }
 }
+
+
+
+
+
+  
+
+// pair<status_code,string> GetUpdateToken(const string& addr,  const string& userid, const string& password) {
+
+//   value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
+//   pair<status_code,value> result {do_request (methods::GET,
+//                                               addr +
+//                                               get_update_token_op + "/" +
+//                                               userid,
+//                                               pwd
+//                                               )};
+//   cerr << "token " << result.second << endl;
+//   if (result.first != status_codes::OK)
+//     return make_pair (result.first, "");
+//   else {
+//     string token {result.second["token"].as_string()};
+//     return make_pair (result.first, token);
+//   }
+// }
 
 
 
