@@ -817,7 +817,7 @@ SUITE(UPDATE_AUTH) {
   TEST_FIXTURE(AuthFixture, PutAuth_Forbidden) {
     pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
 
-    cout << "Requesting token" << endl;
+    cout << "Requesting READ-ONLY token" << endl;
     pair<status_code,string> token_res {
       get_update_token(AuthFixture::auth_addr,
                        AuthFixture::userid,
