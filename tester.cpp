@@ -395,7 +395,6 @@ SUITE(GET) {
       if (del_result != status_codes::OK) {
         throw std::exception();
       }
-<<<<<<< HEAD
       */
     }
   };
