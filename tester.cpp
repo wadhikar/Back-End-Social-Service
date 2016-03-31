@@ -371,6 +371,12 @@ SUITE(GET) {
   class GetFixture {
   public:
     static constexpr const char* addr {"http://127.0.0.1:34568/"};
+    static constexpr const char* auth_addr {"http://localhost:34570/"};
+    static constexpr const char* userid {"user"};
+    static constexpr const char* user_pwd {"user"};
+    static constexpr const char* auth_table {"AuthTable"};
+    static constexpr const char* auth_table_partition {"Userid"};
+    static constexpr const char* auth_pwd_prop {"Password"};
     static constexpr const char* table {"TestTable"};
     static constexpr const char* partition {"Franklin,Aretha"};
     static constexpr const char* row {"USA"};
@@ -390,17 +396,12 @@ SUITE(GET) {
         throw std::exception();
       }
     }
-    int put_result {put_entity (addr, table, partition, row, property, prop_val)};
-    cerr << "put result " << put_result << endl;
-    if (put_result != status_codes::OK) {
-      throw std::exception();
-    }
+    ~GetFixture() {
+      int del_ent_result {delete_entity (addr, table, partition, row)};
+      if (del_ent_result != status_codes::OK) {
+        throw std::exception();
+      }
 
-  ~BasicFixture() {
-    int del_ent_result {delete_entity (addr, table, partition, row)};
-    if (del_ent_result != status_codes::OK) {
-      throw std::exception();
-    }
 
     /*
       In traditional unit testing, we might delete the table after every test.
@@ -440,20 +441,19 @@ SUITE(GET) {
       cout << "result.second.serialize(): " << result.second.serialize() << endl;
       CHECK_EQUAL(status_codes::OK, result.first);
     }
-}
 
-SUITE(GET) {
   /*
     A test of GET all table entries
 
     Demonstrates use of new compare_json_arrays() function.
    */
-  TEST_FIXTURE(BasicFixture, GetAll) {
+  /*
+  TEST_FIXTURE(GetFixture, GetAll) {
     string partition {"Canada"};
     string row {"Katherines,The"};
     string property {"Home"};
     string prop_val {"Vancouver"};
-    int put_result {put_entity (BasicFixture::addr, BasicFixture::table, partition, row, property, prop_val)};
+    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
     cerr << "put result " << put_result << endl;
     assert (put_result == status_codes::OK);
 
@@ -473,7 +473,7 @@ SUITE(GET) {
       independent of the order of returned values.
      */
     //CHECK_EQUAL(body.serialize(), string("{\"")+string(GetFixture::property)+ "\":\""+string(GetFixture::prop_val)+"\"}");
-
+    /*
     CHECK_EQUAL(status_codes::OK, result.first);
     value obj1 {
       value::object(vector<pair<string,value>> {
@@ -484,9 +484,9 @@ SUITE(GET) {
     };
     value obj2 {
       value::object(vector<pair<string,value>> {
-          make_pair(string("Partition"), value::string(BasicFixture::partition)),
-          make_pair(string("Row"), value::string(BasicFixture::row)),
-          make_pair(string(BasicFixture::property), value::string(BasicFixture::prop_val))
+          make_pair(string("Partition"), value::string(GetFixture::partition)),
+          make_pair(string("Row"), value::string(GetFixture::row)),
+          make_pair(string(GetFixture::property), value::string(GetFixture::prop_val))
       })
     };
     vector<object> exp {
@@ -494,8 +494,9 @@ SUITE(GET) {
       obj2.as_object()
     };
     compare_json_arrays(exp, result.second);
-    CHECK_EQUAL(status_codes::OK, delete_entity (BasicFixture::addr, BasicFixture::table, partition, row));
+    CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
   }
+  */
 
   /*
     Test of GET all from specific partition
@@ -624,7 +625,7 @@ SUITE(GET) {
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition3, row3));
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition4, row4));
     }
-
+    
     /*
       Test of GET all entities containing all specified properties
     */
@@ -673,104 +674,104 @@ SUITE(GET) {
 
       cout << "Requesting read token" << endl;
       pair<status_code,string> token_res {
-        get_read_token(AuthFixture::auth_addr,
-                         AuthFixture::userid,
-                         AuthFixture::user_pwd)};
+        get_read_token(GetFixture::auth_addr,
+                         GetFixture::userid,
+                         GetFixture::user_pwd)};
       cout << "Token response " << token_res.first << endl;
       CHECK_EQUAL (token_res.first, status_codes::OK);
 
       pair<status_code,value> result {
         do_request (methods::GET,
-                    string(AuthFixture::addr)
+                    string(GetFixture::addr)
                     + read_entity_auth + "/"
-                    + AuthFixture::table + "/"
+                    + GetFixture::table + "/"
                     + token_res.second + "/"
-                    + AuthFixture::partition + "/"
-                    + AuthFixture::row)};
+                    + GetFixture::partition + "/"
+                    + GetFixture::row)};
       CHECK_EQUAL(status_codes::OK, result.first);
 
     }
 
     // Tests that should end with status_codes::BadRequest (400)
-    TEST_FIXTURE(GetFixture, ReadEntityAuth) {
+    TEST_FIXTURE(GetFixture, ReadEntityAuth_BadRequest) {
 
       cout << "Requesting read token" << endl;
       pair<status_code,string> token_res {
-        get_read_token(AuthFixture::auth_addr,
-                         AuthFixture::userid,
-                         AuthFixture::user_pwd)};
+        get_read_token(GetFixture::auth_addr,
+                         GetFixture::userid,
+                         GetFixture::user_pwd)};
       cout << "Token response " << token_res.first << endl;
       CHECK_EQUAL (token_res.first, status_codes::OK);
 
       // No table name
       pair<status_code,value> result {
         do_request (methods::GET,
-                    string(AuthFixture::addr)
+                    string(GetFixture::addr)
                     + read_entity_auth + "/"
                     + token_res.second + "/"
-                    + AuthFixture::partition + "/"
-                    + AuthFixture::row)};
+                    + GetFixture::partition + "/"
+                    + GetFixture::row)};
       CHECK_EQUAL(status_codes::OK, result.first);
 
       // No token
       result = do_request (methods::GET,
-                    string(AuthFixture::addr)
+                    string(GetFixture::addr)
                     + read_entity_auth + "/"
-                    + AuthFixture::table + "/"
-                    + AuthFixture::partition + "/"
-                    + AuthFixture::row);
+                    + GetFixture::table + "/"
+                    + GetFixture::partition + "/"
+                    + GetFixture::row);
       CHECK_EQUAL(status_codes::OK, result.first);
 
       // No partition
       result = do_request (methods::GET,
-                    string(AuthFixture::addr)
+                    string(GetFixture::addr)
                     + read_entity_auth + "/"
-                    + AuthFixture::table + "/"
+                    + GetFixture::table + "/"
                     + token_res.second + "/"
-                    + AuthFixture::row);
+                    + GetFixture::row);
       CHECK_EQUAL(status_codes::OK, result.first);
 
       // No row
       result = do_request (methods::GET,
-                    string(AuthFixture::addr)
+                    string(GetFixture::addr)
                     + read_entity_auth + "/"
-                    + AuthFixture::table + "/"
+                    + GetFixture::table + "/"
                     + token_res.second + "/"
-                    + AuthFixture::partition);
+                    + GetFixture::partition);
       CHECK_EQUAL(status_codes::OK, result.first);
 
     }
 
     // Tests that should end with status_codes::NotFound (404)
-    TEST_FIXTURE(GetFixture, ReadEntityAuth) {
+    TEST_FIXTURE(GetFixture, ReadEntityAuth_NotFound) {
 
       cout << "Requesting read token" << endl;
       pair<status_code,string> token_res {
-        get_read_token(AuthFixture::auth_addr,
-                         AuthFixture::userid,
-                         AuthFixture::user_pwd)};
+        get_read_token(GetFixture::auth_addr,
+                         GetFixture::userid,
+                         GetFixture::user_pwd)};
       cout << "Token response " << token_res.first << endl;
       CHECK_EQUAL (token_res.first, status_codes::OK);
 
       // Invalid table name
       pair<status_code,value> result {
         do_request (methods::GET,
-                    string(AuthFixture::addr)
+                    string(GetFixture::addr)
                     + read_entity_auth + "/"
                     + "WrongTable" + "/"
                     + token_res.second + "/"
-                    + AuthFixture::partition + "/"
-                    + AuthFixture::row)};
+                    + GetFixture::partition + "/"
+                    + GetFixture::row)};
       CHECK_EQUAL(status_codes::OK, result.first);
 
       // Invalid partition and row
       result = do_request (methods::GET,
-                          string(AuthFixture::addr)
+                          string(GetFixture::addr)
                           + read_entity_auth + "/"
                           + "WrongTable" + "/"
                           + token_res.second + "/"
-                          + AuthFixture::partition + "/"
-                          + AuthFixture::row)};
+                          + GetFixture::partition + "/"
+                          + GetFixture::row);
       CHECK_EQUAL(status_codes::OK, result.first);
     }
 }
@@ -903,7 +904,7 @@ SUITE(UPDATE_AUTH) {
                 + AuthFixture::row,
                 value::object (vector<pair<string,value>>
                                  {make_pair(added_prop.first,
-                                            value::string(added_prop.second))});
+                                            value::string(added_prop.second))}));
 
     CHECK_EQUAL(status_codes::BadRequest, result.first);
 
@@ -916,7 +917,7 @@ SUITE(UPDATE_AUTH) {
                 + AuthFixture::row,
                 value::object (vector<pair<string,value>>
                                  {make_pair(added_prop.first,
-                                            value::string(added_prop.second))});
+                                            value::string(added_prop.second))}));
 
     CHECK_EQUAL(status_codes::BadRequest, result.first);
 
@@ -929,7 +930,7 @@ SUITE(UPDATE_AUTH) {
                 + AuthFixture::partition + "/",
                 value::object (vector<pair<string,value>>
                                  {make_pair(added_prop.first,
-                                            value::string(added_prop.second))});
+                                            value::string(added_prop.second))}));
 
     CHECK_EQUAL(status_codes::BadRequest, result.first);
 
