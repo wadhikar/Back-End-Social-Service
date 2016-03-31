@@ -204,14 +204,14 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     while (it != end) {
-        prop_vals_t keys {
-          if(value::string(it->row_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
-            //if the userID, and its password matches, return the token with permission of read-only
-            do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
-            message.reply(status_codes::OK);
-            return;
-          }
-        }
+        
+      if((it->row_key() == paths[1]) && (json_body.second == (it->properties().find("Password")))){
+        //if the userID, and its password matches, return the token with permission of read-only
+        do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
+        message.reply(status_codes::OK);
+        return;
+      }
+        
       ++it; //iteration
     }
     message.reply(status_codes::NotFound); //Here, the userid not found
