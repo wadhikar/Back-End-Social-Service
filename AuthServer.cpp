@@ -25,6 +25,8 @@ using azure::storage::edm_type;
 using azure::storage::entity_property;
 using azure::storage::table_entity;
 using azure::storage::table_operation;
+using azure::storage::table_query;
+using azure::storage::table_query_iterator;
 using azure::storage::table_request_options;
 using azure::storage::table_result;
 using azure::storage::table_shared_access_policy;
@@ -49,7 +51,7 @@ using web::http::uri;
 using web::json::value;
 
 using web::http::experimental::listener::http_listener;
-
+using prop_vals_t = vector<pair<string,value>>;
 using prop_str_vals_t = vector<pair<string,string>>;
 
 constexpr const char* def_url = "http://localhost:34570";
