@@ -282,7 +282,7 @@ void handle_get(http_request message) {
       message.reply(status_codes::OK);
   }else if (paths[0] == read_entity_auth){
     //GET ReadEntityAuth
-    if(paths.size() < 4){//badrequest if not enough parameters
+    if(paths.size() < 5){//badrequest if not enough parameters
       message.reply(status_codes::BadRequest);
       return;
     }
