@@ -518,6 +518,9 @@ void handle_delete(http_request message) {
   Wait for a carriage return, then shut the server down.
  */
 int main (int argc, char const * argv[]) {
+
+  table_cache.init(storage_connection_string);
+
   http_listener listener {def_url};
   listener.support(methods::GET, &handle_get);
   listener.support(methods::POST, &handle_post);
