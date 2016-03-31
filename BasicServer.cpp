@@ -263,7 +263,7 @@ void handle_get(http_request message) {
     }
     // GET specific entry: Partition == paths[1], Row == paths[2]
 
-    table_operation retrieve_operation {table_operation::retrieve_entity(paths[1], paths[2])};
+    table_operation retrieve_operation {table_operation::retrieve_entity(paths[2], paths[3])};
     table_result retrieve_result {table.execute(retrieve_operation)};
     cout << "HTTP code: " << retrieve_result.http_status_code() << endl;
     if (retrieve_result.http_status_code() == status_codes::NotFound) {
