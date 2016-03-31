@@ -283,9 +283,10 @@ void handle_get(http_request message) {
         }
       }
       if(it->row_key() == paths[1] && passwordVector[0] == passToStore){
-          //if the userID, and its password matches, return the token with permission of read-only
+          //if the userID, and its password matches, return the token with permission of read and write
           cloud_table table2 {table_cache.lookup_table(data_table_name)};
-          pair<status_code,string> tempPair = do_get_token(table2, dataPart, dataRow, table_shared_access_policy::permissions::read);
+          pair<status_code,string> tempPair =   do_get_token(table2, dataPart, dataRow, table_shared_access_policy::permissions::read |
+                                                                                      table_shared_access_policy::permissions::update);
           vector<pair<string,string>> pairToReturn {make_pair("token", tempPair.second)};
           value returnToken = build_json_object(pairToReturn);
           message.reply(tempPair.first, returnToken);
