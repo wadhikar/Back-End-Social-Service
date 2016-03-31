@@ -179,70 +179,61 @@ pair<status_code,string> do_get_token (const cloud_table& data_table,
 
 void handle_get(http_request message) { 
 
-
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** AuthServer GET " << path << endl;
   auto paths = uri::split_path(path);
   unordered_map<string,string> json_body {get_json_body (message)};
   
-  // Need at least an operation and userid
   //path[0] = command; path[1] = userid
+
+
   if (paths.size() < 2) {
-    message.reply(status_codes::BadRequest);
+    message.reply(status_codes::BadRequest);    // Need at least an operation and userid
     return;
   }
-  else if(paths[0] == get_read_token_op || ){
-
+  else if(paths[0] == get_read_token_op){ //operation for GetReadToken
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     while (it != end) {
         prop_vals_t keys {
           if(value::string(it->row_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
-            //if userid + password both matches?
-
+            //if the userID, and its password matches, return the token with permission of read-only
             do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
             message.reply(status_codes::OK);
             return;
           }
         }
-      ++it;
+      ++it; //iteration
     }
-    message.reply(status_codes::NotFound);  //userid not found
+    message.reply(status_codes::NotFound); //Here, the userid not found
 
 
-
-/*
-//2. GET an update token. 
-/*
-This operation has the same specification as 'Get a read token', except for the 
-following differences:
-
-Operation : GetUpdateToken
-Response status_codes::OK : The returned token permits update operations as well as reads
-*/
-
-    else if (paths[0] == get_update_token_op){
-      table_query query {};
+  else if (paths[0] == get_update_token_op){  //oepration for GetUpdateToken
+      /*
+      This operation has the same specification as 'GetReadToken', 
+      except the returned token permits update operation as well as reads
+      */
+    table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     while (it != end) {
         prop_vals_t keys {
           if(value::string(it->partition_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
-            //if userid + password both matches?
+            //If the userID, and its password matches, return the token with permission of read and update
             do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop,table_shared_access_policy::permission::read|
                 table_shared_access_policy::permissions::update);
-
             message.reply(status_codes::OK);
             return;
           }
         }
       ++it;
     }
-    message.reply(status_codes::NotFound);  //userid not found
-
+    message.reply(status_codes::NotFound);  //userid is not found
     }
-}
+} //End of Handle-Get
+
+
 
 
 /*
