@@ -23,7 +23,6 @@
 #include "TableCache.h"
 //#include "config.h"
 #include "ServerUtils.h"
-
 #include "make_unique.h"
 
 #include "azure_keys.h"
@@ -115,8 +114,23 @@ prop_vals_t get_properties (const table_entity::properties_type& properties, pro
 }
 
 /*
+  Return true if an HTTP request has a JSON body
+
+  This routine can be called multiple times on the same message.
+ */
+bool has_json_body (http_request message) {
+  return message.headers()["Content-type"] == "application/json";
+}
+
+/*
   Given an HTTP message with a JSON body, return the JSON
   body as an unordered map of strings to strings.
+
+  If the message has no JSON body, return an empty map.
+
+  THIS ROUTINE CAN ONLY BE CALLED ONCE FOR A GIVEN MESSAGE
+  (see http://microsoft.github.io/cpprestsdk/classweb_1_1http_1_1http__request.html#ae6c3d7532fe943de75dcc0445456cbc7
+  for source of this limit).
 
   Note that all types of JSON values are returned as strings.
   Use C++ conversion utilities to convert to numbers or dates
@@ -331,24 +345,11 @@ void handle_post(http_request message) {
 /*
   Top-level routine for processing all HTTP PUT requests.
  */
-
-
-
-  /*
-status_codes::OK (200): Table found and all entities extended with the specified name/value property
-  */
-
-const string Add_Property {"AddProperty"};/////////////////////
-const string Update_Property {"UpdateProperty"};
-
-
 void handle_put(http_request message) {
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** PUT " << path << endl;
   auto paths = uri::split_path(path);
   // Need at least an operation, table name, partition, and row
-  unordered_map<string,string> json_body {get_json_body (message)}; //getting json body
-
   if (paths.size() < 4) {
     message.reply(status_codes::BadRequest);
     return;
@@ -511,6 +512,10 @@ void handle_delete(http_request message) {
   Wait for a carriage return, then shut the server down.
  */
 int main (int argc, char const * argv[]) {
+  cout << "Parsing connection string" << endl;
+  table_cache.init (storage_connection_string);
+
+  cout << "Opening listener" << endl;
   http_listener listener {def_url};
   listener.support(methods::GET, &handle_get);
   listener.support(methods::POST, &handle_post);
