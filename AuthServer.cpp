@@ -25,6 +25,8 @@ using azure::storage::edm_type;
 using azure::storage::entity_property;
 using azure::storage::table_entity;
 using azure::storage::table_operation;
+using azure::storage::table_query;
+using azure::storage::table_query_iterator;
 using azure::storage::table_request_options;
 using azure::storage::table_result;
 using azure::storage::table_shared_access_policy;
@@ -49,7 +51,7 @@ using web::http::uri;
 using web::json::value;
 
 using web::http::experimental::listener::http_listener;
-
+using prop_vals_t = vector<pair<string,value>>;
 using prop_str_vals_t = vector<pair<string,string>>;
 
 constexpr const char* def_url = "http://localhost:34570";
@@ -178,63 +180,66 @@ pair<status_code,string> do_get_token (const cloud_table& data_table,
  */
 
 void handle_get(http_request message) { 
+
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** AuthServer GET " << path << endl;
   auto paths = uri::split_path(path);
-
-  // Need at least an operation and userid
+  unordered_map<string,string> json_body {get_json_body (message)};
+  
   //path[0] = command; path[1] = userid
+
+
   if (paths.size() < 2) {
-    message.reply(status_codes::BadRequest);
+    message.reply(status_codes::BadRequest);    // Need at least an operation and userid
     return;
   }
-  else if(paths[0] == get_read_token_op){
-    cloud_table table {auth_table_name.lookup_table(paths[1])}; //look up userid
-    value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
-    //copied this line from tester.cpp. wat
+  cloud_table table {table_cache.lookup_table(paths[0])};
+  if ( ! table.exists()) {
+    message.reply(status_codes::NotFound);//reply NotFound status if table doesn't exist
+    return;
 
-    if ( ! table.exists()) {
-      message.reply(status_codes::NotFound);  //userid not found
-      return;
-    }
-    else{ //userid exists
-      //
-      //if the password matches:
-      if(table.password == password){ //idk about this
-        do_get_token(table,auth_table_partition_prop,auth_table_row_prop);
-        // this function creates a token and prints it
-        // not sure about those parameters
+  }
+  else if(paths[0] == get_read_token_op){ //operation for GetReadToken
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+    while (it != end) {
+        
+      if((it->row_key() == paths[1]) && (json_body.second == (it->properties().find("Password")))){
+        //if the userID, and its password matches, return the token with permission of read-only
+        do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
+        message.reply(status_codes::OK);
+        return;
       }
-      //return token
-      //The response body will be a JSON object containing the single property token, 
-      //whose value is a string representing the token. Azure tokens are about 100 characters long.
-      message.reply(status_codes::OK);
+        
+      ++it; //iteration
     }
-  }
-}
+    message.reply(status_codes::NotFound); //Here, the userid not found
 
 
-
-//2. GET an update token. 
-
-pair<status_code,string> get_update_token(const string& addr,  const string& userid, const string& password) {
-
-  value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
-  pair<status_code,value> result {do_request (methods::GET,
-                                              addr +
-                                              get_update_token_op + "/" +
-                                              userid,
-                                              pwd
-                                              )};
-  cerr << "token " << result.second << endl;
-  if (result.first != status_codes::OK)
-    return make_pair (result.first, "");
-  else {
-    string token {result.second["token"].as_string()};
-    return make_pair (result.first, token);
-  }
-}
-
+  else if (paths[0] == get_update_token_op){  //oepration for GetUpdateToken
+      /*
+      This operation has the same specification as 'GetReadToken', 
+      except the returned token permits update operation as well as reads
+      */
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+    while (it != end) {
+        prop_vals_t keys {
+          if(value::string(it->partition_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
+            //If the userID, and its password matches, return the token with permission of read and update
+            do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop,table_shared_access_policy::permission::read|
+                table_shared_access_policy::permissions::update);
+            message.reply(status_codes::OK);
+            return;
+          }
+        }
+      ++it;
+    }
+    message.reply(status_codes::NotFound);  //userid is not found
+    }
+} //End of Handle-Get
 
 
 
