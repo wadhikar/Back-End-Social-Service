@@ -338,6 +338,27 @@ pair<status_code,string> get_update_token(const string& addr,  const string& use
 }
 
 /*
+  Utility to get a token good for reading a specific entry
+  from a specific table for one day.
+ */
+pair<status_code,string> get_read_token(const string& addr,  const string& userid, const string& password) {
+  value pwd {build_json_object (vector<pair<string,string>> {make_pair("Password", password)})};
+  pair<status_code,value> result {do_request (methods::GET,
+                                              addr +
+                                              get_read_token_op + "/" +
+                                              userid,
+                                              pwd
+                                              )};
+  cerr << "token " << result.second << endl;
+  if (result.first != status_codes::OK)
+    return make_pair (result.first, "");
+  else {
+    string token {result.second["token"].as_string()};
+    return make_pair (result.first, token);
+  }
+}
+
+/*
   A sample fixture that ensures TestTable exists, and
   at least has the entity Franklin,Aretha/USA
   with the property "Song": "RESPECT".
@@ -818,7 +839,7 @@ SUITE(UPDATE_AUTH) {
 
     cout << "Requesting READ-ONLY token" << endl;
     pair<status_code,string> token_res {
-      get_update_token(AuthFixture::auth_addr,
+      get_read_token(AuthFixture::auth_addr,
                        AuthFixture::userid,
                        AuthFixture::user_pwd)};
     cout << "Token response " << token_res.first << endl;
@@ -836,25 +857,7 @@ SUITE(UPDATE_AUTH) {
                                    {make_pair(added_prop.first,
                                               value::string(added_prop.second))})
                   )};
-    CHECK_EQUAL(status_codes::OK, result.first);
+    CHECK_EQUAL(status_codes::Forbidden, result.first);
 
-    pair<status_code,value> ret_res {
-      do_request (methods::GET,
-                  string(AuthFixture::addr)
-                  + read_entity_admin + "/"
-                  + AuthFixture::table + "/"
-                  + AuthFixture::partition + "/"
-                  + AuthFixture::row)};
-    CHECK_EQUAL (status_codes::OK, ret_res.first);
-    value expect {
-      build_json_object (
-                         vector<pair<string,string>> {
-                           added_prop,
-                           make_pair(string(AuthFixture::property),
-                                     string(AuthFixture::prop_val))}
-                         )};
-
-    cout << AuthFixture::property << endl;
-    compare_json_values (expect, ret_res.second);
   }
 }

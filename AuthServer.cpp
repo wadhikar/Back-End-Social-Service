@@ -212,14 +212,14 @@ void handle_get(http_request message) {
       unordered_map<string,entity_property>::iterator property_it;
       if(it->row_key() == paths[1] && p.second == (property_it->second.str())){
           //if the userID, and its password matches, return the token with permission of read-only
-          do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
+          do_get_token(table,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
           message.reply(status_codes::OK);
           return;
       }
       ++it; //iteration
     }
     message.reply(status_codes::NotFound); //Here, the userid not found
-
+  }
 
   else if (paths[0] == get_update_token_op){  //oepration for GetUpdateToken
       /*
@@ -230,15 +230,19 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     while (it != end) {
-        prop_vals_t keys {
-          if(value::string(it->partition_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
+      pair<string,string> p;
+      for( const auto v : json_body ) {
+        p = v;
+      }
+      unordered_map<string,entity_property> propertyPWD {it->properties()};
+      unordered_map<string,entity_property>::iterator property_it;
+      if(it->row_key() == paths[1] && p.second == (property_it->second.str())){
             //If the userID, and its password matches, return the token with permission of read and update
-            do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop,table_shared_access_policy::permission::read|
+            do_get_token(table,auth_table_partition_prop,auth_table_row_prop,table_shared_access_policy::permissions::read|
                 table_shared_access_policy::permissions::update);
             message.reply(status_codes::OK);
             return;
           }
-        }
       ++it;
     }
     message.reply(status_codes::NotFound);  //userid is not found
