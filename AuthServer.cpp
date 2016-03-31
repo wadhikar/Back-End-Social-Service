@@ -193,6 +193,12 @@ void handle_get(http_request message) {
     message.reply(status_codes::BadRequest);    // Need at least an operation and userid
     return;
   }
+  cloud_table table {table_cache.lookup_table(paths[0])};
+  if ( ! table.exists()) {
+    message.reply(status_codes::NotFound);//reply NotFound status if table doesn't exist
+    return;
+
+  }
   else if(paths[0] == get_read_token_op){ //operation for GetReadToken
     table_query query {};
     table_query_iterator end;
