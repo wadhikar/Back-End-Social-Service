@@ -57,6 +57,7 @@ using web::http::http_headers;
 using web::http::http_request;
 using web::http::methods;
 using web::http::status_codes;
+using web::http::status_code;
 using web::http::uri;
 
 using web::json::value;
@@ -290,7 +291,7 @@ void handle_get(http_request message) {
       message.reply(status_codes::OK, value::object(values));
     else
       message.reply(status_codes::OK);
-  }else if (path2[0] == read_entity_auth){
+  }else if (paths[0] == read_entity_auth){
     //GET ReadEntityAuth
     if(paths.size() < 4){//badrequest if not enough parameters
       message.reply(status_codes::BadRequest);
