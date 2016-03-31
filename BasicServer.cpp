@@ -21,7 +21,8 @@
 #include <was/table.h>
 
 #include "TableCache.h"
-#include "config.h"
+//#include "config.h"
+#include "ServerUtils.h"
 #include "make_unique.h"
 
 #include "azure_keys.h"
@@ -56,6 +57,7 @@ using web::http::http_headers;
 using web::http::http_request;
 using web::http::methods;
 using web::http::status_codes;
+using web::http::status_code;
 using web::http::uri;
 
 using web::json::value;
@@ -66,12 +68,16 @@ using prop_vals_t = vector<pair<string,value>>;
 
 constexpr const char* def_url = "http://localhost:34568";
 
-const string create_table {"CreateTable"};
-const string delete_table {"DeleteTable"};
-const string update_entity {"UpdateEntity"};
-const string delete_entity {"DeleteEntity"};
-const string Update_Property {"UpdateProperty"};
-const string Add_Property {"AddProperty"};
+const string create_table {"CreateTableAdmin"};
+const string delete_table {"DeleteTableAdmin"};
+const string update_entity {"UpdateEntityAdmin"};
+const string delete_entity {"DeleteEntityAdmin"};
+const string Add_Property {"AddPropertyAdmin"};
+const string Update_Property {"UpdatePropertyAdmin"};
+const string read_entity {"ReadEntityAdmin"};
+const string read_entity_auth {"ReadEntityAuth"};
+const string update_entity_auth {"UpdateEntityAuth"};
+
 /*
   Cache of opened tables
  */
@@ -161,145 +167,139 @@ void handle_get(http_request message) {
     message.reply(status_codes::BadRequest);
     return;
   }
+  //
   //initialize json_body
   unordered_map<string,string> json_body {get_json_body (message)};
   //look up table and check if table exists or not
-  cloud_table table {table_cache.lookup_table(paths[0])};
+  cloud_table table {table_cache.lookup_table(paths[1])};
+
   if ( ! table.exists()) {
     message.reply(status_codes::NotFound);//reply NotFound status if table doesn't exist
     return;
   }
 
-  // GET all entries in table or GET all entities containing all specified properties
-  if (paths.size() == 1) {
-    table_query query {};
-    table_query_iterator end;
-    table_query_iterator it = table.execute_query(query);
-    vector<value> key_vec;
-    unordered_map<string,string> json_body {get_json_body (message)};//gets the JSON body
 
-    int matching_property_num = 0;//initialize number of matching properties
+  if (paths[0] == read_entity) {
 
-    cout << "json_body.size(): " << json_body.size() << endl;
-    //if JSON body exits GET all entities containing all specified properties
-    if(json_body.size() != 0){
-      while (it != end) {//goes through the table, entity by entity
-        matching_property_num = 0;
-        for (const auto v : json_body) {//goes through json body pair by pair
-          for (const auto p : it->properties()) {//goes through all the properties in each entity
-            if(v.first == p.first){
-              //increment by 1 whenever there's a matching property and break
-              matching_property_num++;
-              cout << "it->partition_key: " << it->partition_key() << endl;
-              break;
+    // GET all entries in table or GET all entities containing all specified properties
+    if (paths.size() == 2) {
+      table_query query {};
+      table_query_iterator end;
+      table_query_iterator it = table.execute_query(query);
+      vector<value> key_vec;
+
+
+      int matching_property_num = 0;//initialize number of matching properties
+
+
+      //if JSON body exits GET all entities containing all specified properties
+      if(json_body.size() > 0){
+        while (it != end) {//goes through the table, entity by entity
+          matching_property_num = 0;
+          for (const auto v : json_body) {//goes through json body pair by pair
+            for (const auto p : it->properties()) {//goes through all the properties in each entity
+              if(v.first == p.first){
+                //increment by 1 whenever there's a matching property and break
+                matching_property_num++;
+                break;
+              }
             }
           }
+          //if all property names in JSON are included in the entity push keys to key_vec
+          if(matching_property_num == json_body.size()){
+            prop_vals_t keys {
+        make_pair("Partition",value::string(it->partition_key())),
+        make_pair("Row", value::string(it->row_key()))};
+            keys = get_properties(it->properties(), keys);
+            key_vec.push_back(value::object(keys));
+          }
+          ++it;
         }
-        //if all property names in JSON are included in the entity push keys to key_vec
-        if(matching_property_num == json_body.size()){
+      }
+      //GET all entries in table
+      else{
+        while (it != end) {
+          cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
           prop_vals_t keys {
       make_pair("Partition",value::string(it->partition_key())),
       make_pair("Row", value::string(it->row_key()))};
           keys = get_properties(it->properties(), keys);
           key_vec.push_back(value::object(keys));
+
+          ++it;
         }
-        ++it;
       }
-      cout << "matching_property_num: " << matching_property_num << endl;
+      message.reply(status_codes::OK, value::array(key_vec));
+      return;
+
     }
-    //GET all entries in table
-    else{
+    //needs at least a table, partition, and a row
+    if (paths.size() < 4) {
+      message.reply (status_codes::BadRequest);
+      return;
+    }
+    //Get all entities containing all specified properties:
+    if(paths[3] == "*"){
+      table_query query {};
+      table_query_iterator end;
+      table_query_iterator it = table.execute_query(query);
+      vector<value> key_vec;
+      //if partition name the entity equals the parameter partition push keys to key_vec
       while (it != end) {
         cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
         prop_vals_t keys {
     make_pair("Partition",value::string(it->partition_key())),
     make_pair("Row", value::string(it->row_key()))};
         keys = get_properties(it->properties(), keys);
-        key_vec.push_back(value::object(keys));
+        if(paths[2] == it->partition_key()){
+          key_vec.push_back(value::object(keys));
+        }
+
         ++it;
       }
-    }
-    message.reply(status_codes::OK, value::array(key_vec));
-    return;
-  }
-  //needs at least a table, partition, and a row
-  if (paths.size() < 3) {
-    message.reply (status_codes::BadRequest);
-    return;
-  }
-  //Get all entities containing all specified properties:
-  if(paths[2] == "*"){
-    table_query query {};
-    table_query_iterator end;
-    table_query_iterator it = table.execute_query(query);
-    vector<value> key_vec;
-    //if partition name the entity equals the parameter partition push keys to key_vec
-    while (it != end) {
-      cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
-      prop_vals_t keys {
-  make_pair("Partition",value::string(it->partition_key())),
-  make_pair("Row", value::string(it->row_key()))};
-      keys = get_properties(it->properties(), keys);
-      if(paths[1] == it->partition_key()){
-        key_vec.push_back(value::object(keys));
-      }
 
-      ++it;
+      message.reply(status_codes::OK, value::array(key_vec));
+      return;
+    }
+    // GET specific entry: Partition == paths[1], Row == paths[2]
+
+    table_operation retrieve_operation {table_operation::retrieve_entity(paths[2], paths[3])};
+    table_result retrieve_result {table.execute(retrieve_operation)};
+    cout << "HTTP code: " << retrieve_result.http_status_code() << endl;
+    if (retrieve_result.http_status_code() == status_codes::NotFound) {
+      message.reply(status_codes::NotFound);
+      return;
     }
 
-    message.reply(status_codes::OK, value::array(key_vec));
-    return;
-  }
-  //Get all entities from a specific partition.
-  if (paths.size() < 3) {
-    message.reply(status_codes::BadRequest);
-    return;
-  }
-  // GET specific entry: Partition == paths[1], Row == paths[2]
+    table_entity entity {retrieve_result.entity()};
+    table_entity::properties_type properties {entity.properties()};
 
-  if(paths[2] == "*"){
-    table_query query {};
-    table_query_iterator end;
-    table_query_iterator it = table.execute_query(query);
-    vector<value> key_vec;
-    if(paths[1] == it->partition_key()){
-      while (it != end) {
-        cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
-        prop_vals_t keys {
-    make_pair("Partition",value::string(it->partition_key())),
-    make_pair("Row", value::string(it->row_key()))};
-        keys = get_properties(it->properties(), keys);
-        key_vec.push_back(value::object(keys));
-        ++it;
-      }
+    // If the entity has any properties, return them as JSON
+    prop_vals_t values (get_properties(properties));
+    if (values.size() > 0)
+      message.reply(status_codes::OK, value::object(values));
+    else
+      message.reply(status_codes::OK);
+  }else if (paths[0] == read_entity_auth){
+    //GET ReadEntityAuth
+    if(paths.size() < 5){//badrequest if not enough parameters
+      message.reply(status_codes::BadRequest);
+      return;
     }
+    pair<status_code, table_entity> p1 = read_with_token (message, tables_endpoint);
 
-    message.reply(status_codes::OK, value::array(key_vec));
-    return;
+    table_entity entity {p1.second};
+    table_entity::properties_type properties {entity.properties()};
 
-
-  }
-
-
-
-  // GET specific entry: Partition == paths[1], Row == paths[2]
-  table_operation retrieve_operation {table_operation::retrieve_entity(paths[1], paths[2])};
-  table_result retrieve_result {table.execute(retrieve_operation)};
-  cout << "HTTP code: " << retrieve_result.http_status_code() << endl;
-  if (retrieve_result.http_status_code() == status_codes::NotFound) {
-    message.reply(status_codes::NotFound);
+    // If the entity has any properties, return them as JSON
+    prop_vals_t values (get_properties(properties));
+    if (values.size() > 0)
+      message.reply(status_codes::OK, value::object(values));
+    else
+      message.reply(p1.first);
     return;
   }
 
-  table_entity entity {retrieve_result.entity()};
-  table_entity::properties_type properties {entity.properties()};
-
-  // If the entity has any properties, return them as JSON
-  prop_vals_t values (get_properties(properties));
-  if (values.size() > 0)
-    message.reply(status_codes::OK, value::object(values));
-  else
-    message.reply(status_codes::OK);
 }
 
 /*
@@ -343,8 +343,6 @@ void handle_post(http_request message) {
 status_codes::OK (200): Table found and all entities extended with the specified name/value property
   */
 
-const string Add_Property {"AddProperty"};/////////////////////
-const string Update_Property {"UpdateProperty"};
 
 
 void handle_put(http_request message) {
@@ -359,8 +357,6 @@ void handle_put(http_request message) {
     return;
   }
 
-  unordered_map<string,string> json_body {get_json_body (message)};
-
   cloud_table table {table_cache.lookup_table(paths[1])};
   if ( ! table.exists()) {
     message.reply(status_codes::NotFound);
@@ -369,59 +365,80 @@ void handle_put(http_request message) {
 
   table_entity entity {paths[2], paths[3]};
 
+
+  if(paths[0] == update_entity_auth){
+    try{//reply status code which update_with_token (message, tables_endpoint, json_body) returns
+      message.reply( update_with_token (message, tables_endpoint, json_body));
+    }
+    catch (const storage_exception& e) {//catch exception
+      cout << "Azure Table Storage error: " << e.what() << endl;
+      cout << e.result().extended_error().message() << endl;
+      if (e.result().http_status_code() == status_codes::Forbidden)
+        message.reply(status_codes::Forbidden);
+      else
+        message.reply(status_codes::InternalError);
+    }
+    return;
+  }
+
   /*
-  <Add the specific property to all entities>
+  This name value pair will be added as a property to every entity in the specified table.
+  If an entity already has that property, whatever value it has already
+  will be replaced by the value provided in this object.
   */
   if(paths[0] == Add_Property){
+    message.reply(status_codes::NotImplemented);
+    return;
 
-      table_query query {};
-      table_query_iterator end;
-      table_query_iterator it = table.execute_query(query);
-
-      while (it != end){
-        table_entity::properties_type& properties = entity.properties();
-
-        for (const auto v: json_body){  //nested loop, comparing all the entities with property
-
-          for (const auto p : it->properties()) {
-              if(v.first == p.first){ // If an entity already has the property,
-                properties[v.second] = entity_property {v.second}; // replace it by the value provided
-                message.reply(status_codes::OK);  //Successful Operation
-              }
-              else{ //if an entity does not exist,
-                properties[v.first] = entity_property {v.first};  //Add the entity
-                properties[v.second] = entity_property {v.second};
-                message.reply(status_codes::OK);
-              }
-          }
-        }
-        it++; //Increment for iterator
-      }
+      // table_query query {};
+      // table_query_iterator end;
+      // table_query_iterator it = table.execute_query(query);
+      //
+      // while (it != end){
+      //   table_entity::properties_type& properties = entity.properties();
+      //   for (const auto v: json_body){
+      //
+      //     for (const auto p : it->properties()) {
+      //         if(v.first == p.first){
+      //           properties[v.second] = entity_property {v.second};
+      //           message.reply(status_codes::OK);
+      //         }
+      //         else{ //not existing
+      //           properties[v.first] = entity_property {v.first};
+      //           properties[v.second] = entity_property {v.second};
+      //           message.reply(status_codes::OK);
+      //         }
+      //     }
+      //   }
+      //   it++;
+      // }
     }
 
-    /*
-    <Update the specific property in all entities>
+    /*if an entity has a property matching the specified name, the name
+    of that property is set to the specified value.
     */
-    if(paths[0] == Update_Property){
-      table_query query {};
-      table_query_iterator end;
-      table_query_iterator it = table.execute_query(query);
-
-      while( it != end){
-        table_entity::properties_type& properties = entity.properties();
-        for(const auto v: json_body){ //Nested loop, comparing all the entities with property
-
-          for (const auto p : it->properties()) {
-              if(v.first == p.first){ //If entity has a property matching the specific name,
-                properties[v.second] = entity_property {v.second};  //then the value of that property is set to the specific value
-                message.reply(status_codes::OK);  //Successful operation
-              }
-              // Else if an entity has a property matching, ignore.
-          }
-        }
-        it++; //Increment for iterator
-      }
+    if(paths[0] == Update_Property){  ////////////////////////////////////ADD2
+      message.reply(status_codes::NotImplemented);
+      return;
+      // table_query query {};
+      // table_query_iterator end;
+      // table_query_iterator it = table.execute_query(query);
+      //
+      // while( it != end){
+      //   table_entity::properties_type& properties = entity.properties();
+      //   for(const auto v: json_body){
+      //
+      //     for (const auto p : it->properties()) {
+      //         if(v.first == p.first){
+      //           properties[v.second] = entity_property {v.second};
+      //           message.reply(status_codes::OK);
+      //         }
+      //     }
+      //   }
+      //   it++;
+      // }
     }
+
 
   // Update entity
   if (paths[0] == update_entity) {

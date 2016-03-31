@@ -421,360 +421,361 @@ SUITE(GET) {
     }
   };
 
-  /*
-    A test of GET of a single entity
-   */
-  TEST_FIXTURE(GetFixture, GetSingle) {
-    pair<status_code,value> result {
-      do_request (methods::GET,
-		  string(GetFixture::addr)
-		  + GetFixture::table + "/"
-		  + GetFixture::partition + "/"
-		  + GetFixture::row)};
+  // /*
+  //   A test of GET of a single entity
+  //  */
+  // /*
+  // TEST_FIXTURE(GetFixture, GetSingle) {
+  //   pair<status_code,value> result {
+  //     do_request (methods::GET,
+	// 	  string(GetFixture::addr)
+	// 	  + GetFixture::table + "/"
+	// 	  + GetFixture::partition + "/"
+	// 	  + GetFixture::row)};
+  //
+  //     CHECK_EQUAL(string("{\"")
+	// 	  + GetFixture::property
+	// 	  + "\":\""
+	// 	  + GetFixture::prop_val
+	// 	  + "\"}",
+	// 	  result.second.serialize());
+  //     cout << "result.second.serialize(): " << result.second.serialize() << endl;
+  //     CHECK_EQUAL(status_codes::OK, result.first);
+  //   }
+  //
+  // /*
+  //   A test of GET all table entries
+  //
+  //   Demonstrates use of new compare_json_arrays() function.
+  //  */
+  // /*
+  // TEST_FIXTURE(GetFixture, GetAll) {
+  //   string partition {"Canada"};
+  //   string row {"Katherines,The"};
+  //   string property {"Home"};
+  //   string prop_val {"Vancouver"};
+  //   int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+  //   cerr << "put result " << put_result << endl;
+  //   assert (put_result == status_codes::OK);
+  //
+  //   pair<status_code,value> result {
+  //     do_request (methods::GET,
+	// 	  string(GetFixture::addr)
+	// 	  + string(GetFixture::table))};
+  //
+  //   cout << "result.second: " << result.second << endl;
+  //
+  //   //cout << "Get All result.second: " << result.second << endl;
+  //   CHECK(result.second.is_array());
+  //   CHECK_EQUAL(2, result.second.as_array().size());
+  //
+  //   /*
+  //     Checking the body is not well-supported by UnitTest++, as we have to test
+  //     independent of the order of returned values.
+  //    */
+  //   //CHECK_EQUAL(body.serialize(), string("{\"")+string(GetFixture::property)+ "\":\""+string(GetFixture::prop_val)+"\"}");
+  //   /*
+  //   CHECK_EQUAL(status_codes::OK, result.first);
+  //   value obj1 {
+  //     value::object(vector<pair<string,value>> {
+  //         make_pair(string("Partition"), value::string(partition)),
+  //         make_pair(string("Row"), value::string(row)),
+  //         make_pair(property, value::string(prop_val))
+  //     })
+  //   };
+  //   value obj2 {
+  //     value::object(vector<pair<string,value>> {
+  //         make_pair(string("Partition"), value::string(GetFixture::partition)),
+  //         make_pair(string("Row"), value::string(GetFixture::row)),
+  //         make_pair(string(GetFixture::property), value::string(GetFixture::prop_val))
+  //     })
+  //   };
+  //   vector<object> exp {
+  //     obj1.as_object(),
+  //     obj2.as_object()
+  //   };
+  //   compare_json_arrays(exp, result.second);
+  //   CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
+  // }
+  // */
+  //
+  // /*
+  //   Test of GET all from specific partition
+  //   Essentially the same test as GetSingle
+  // */
+  // TEST_FIXTURE(GetFixture, GetAllSpecificPartition) {
+  //
+  //   /*
+  //   // Basic cases
+  //   string partition {"Katherines,The"};
+  //   string row {"Canada"};
+  //   string property {"Home"};
+  //   string prop_val {"Vancouver"};
+  //   int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+  //   cerr << "put result " << put_result << endl;
+  //   assert (put_result == status_codes::OK);
+  //
+  //   string partition2 {"Franklin,Aretha"};
+  //   string row2 {"Canada"};
+  //   string property2 {"Home"};
+  //   string prop_val2 {"Surrey"};
+  //   int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
+  //   cerr << "put result2 " << put_result2 << endl;
+  //   assert (put_result2 == status_codes::OK);
+  //
+  //   string partition3 {"Katherines,The"};
+  //   string row3 {"Canada"};
+  //   string property3 {"Home"};
+  //   string prop_val3 {"Vancouver"};
+  //   int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
+  //   cerr << "put result3 " << put_result3 << endl;
+  //   assert (put_result3 == status_codes::OK);
+  //
+  //   string partition4 {"Franklin,Aretha"};
+  //   string row4 {"Sweden"};
+  //   string property4 {"Gender"};
+  //   string prop_val4 {"Female"};
+  //   int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
+  //   cerr << "put result4 " << put_result4 << endl;
+  //   assert (put_result4 == status_codes::OK);
+  //   */
+  //
+  //   /*
+  //   // Edge case: 0 matches
+  //   string partition {"Katherines,The"};
+  //   string row {"Canada"};
+  //   string property {"Home"};
+  //   string prop_val {"Vancouver"};
+  //   int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+  //   cerr << "put result " << put_result << endl;
+  //   assert (put_result == status_codes::OK);
+  //
+  //   string partition2 {"Gaga,Lady"};
+  //   string row2 {"Canada"};
+  //   string property2 {"Home"};
+  //   string prop_val2 {"Surrey"};
+  //   int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
+  //   cerr << "put result2 " << put_result2 << endl;
+  //   assert (put_result2 == status_codes::OK);
+  //
+  //   string partition3 {"Katherines,The"};
+  //   string row3 {"Canada"};
+  //   string property3 {"Home"};
+  //   string prop_val3 {"Vancouver"};
+  //   int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
+  //   cerr << "put result3 " << put_result3 << endl;
+  //   assert (put_result3 == status_codes::OK);
+  //
+  //   string partition4 {"Parks,Rosa"};
+  //   string row4 {"Sweden"};
+  //   string property4 {"Gender"};
+  //   string prop_val4 {"Female"};
+  //   int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
+  //   cerr << "put result4 " << put_result4 << endl;
+  //   assert (put_result4 == status_codes::OK);
+  //   */
+  //
+  //   // Edge case: all matches
+  //   string partition {"Franklin,Aretha"};
+  //   string row {"France"};
+  //   string property {"Home"};
+  //   string prop_val {"Vancouver"};
+  //   int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+  //   cerr << "put result " << put_result << endl;
+  //   assert (put_result == status_codes::OK);
+  //
+  //   string partition2 {"Franklin,Aretha"};
+  //   string row2 {"Germany"};
+  //   string property2 {"From"};
+  //   string prop_val2 {"Surrey"};
+  //   int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
+  //   cerr << "put result2 " << put_result2 << endl;
+  //   assert (put_result2 == status_codes::OK);
+  //
+  //   string partition3 {"Franklin,Aretha"};
+  //   string row3 {"Canada"};
+  //   string property3 {"Live"};
+  //   string prop_val3 {"Burnaby"};
+  //   int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
+  //   cerr << "put result3 " << put_result3 << endl;
+  //   assert (put_result3 == status_codes::OK);
+  //
+  //   string partition4 {"Franklin,Aretha"};
+  //   string row4 {"Sweden"};
+  //   string property4 {"Gender"};
+  //   string prop_val4 {"Female"};
+  //   int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
+  //   cerr << "put result4 " << put_result4 << endl;
+  //   assert (put_result4 == status_codes::OK);
+  //
+  //   pair<status_code, value> result {
+  //     do_request (methods::GET,
+  //     string(GetFixture::addr)
+  //     + string(GetFixture::table) + "/"
+	// 	  + "Franklin,Aretha" + "/"
+	// 	  + "*")};
+  //
+  //     cout << "result.second:" << result.second << endl;
+  //
+  //     CHECK(result.second.is_array());
+  //     CHECK_EQUAL(5, result.second.as_array().size());
+  //
+  //     CHECK_EQUAL(status_codes::OK, result.first);
+  //     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
+  //     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition2, row2));
+  //     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition3, row3));
+  //     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition4, row4));
+  //   }
+  //
+  //   /*
+  //     Test of GET all entities containing all specified properties
+  //   */
+  //
+  //   TEST_FIXTURE(GetFixture, GetAllSpecificProperties) {
+  //
+  //     string partition {"Katherines,The"};
+  //     string row {"Canada"};
+  //     string property {"Home"};
+  //     string prop_val {"Vancouver"};
+  //     /*
+  //       Could not initialize json object to pass the do_request() with 3 arguments
+  //       so we left the test as a GetAll test
+  //     */
+  //     // value put_json_body {};
+  //     // put_json_body[0] = value("Home");
+  //     // put_json_body[1] = value("*");
+  //     int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+  //     cerr << "put result " << put_result << endl;
+  //     assert (put_result == status_codes::OK);
+  //
+  //     pair<status_code, value> result {
+  //       do_request (methods::GET,
+  //       string(GetFixture::addr)
+  //       + string(GetFixture::table))};
+  //     CHECK(result.second.is_array());
+  //     CHECK_EQUAL(2, result.second.as_array().size());
+  //
+  //     //cout << "result.second:" << result.second << endl;
+  //     //cout << "result.second.as_array:" ;<< result.second.as_array() << endl;
+  //
+  //     // bool wrongPropertyFlag {false};
+  //     // if (json_body.size () > 0) { // There was a body
+  //     //   for (const auto v : json_body) {
+  //     //     if (v != property) {
+  //     //       wrongPropertyFlag = true;
+  //     //     }
+  //     //   }
+  //     // }
+  //
+  //     CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
+  //   }
 
-      CHECK_EQUAL(string("{\"")
-		  + GetFixture::property
-		  + "\":\""
-		  + GetFixture::prop_val
-		  + "\"}",
-		  result.second.serialize());
-      cout << "result.second.serialize(): " << result.second.serialize() << endl;
-      CHECK_EQUAL(status_codes::OK, result.first);
-    }
-
-  /*
-    A test of GET all table entries
-
-    Demonstrates use of new compare_json_arrays() function.
-   */
-  /*
-  TEST_FIXTURE(GetFixture, GetAll) {
-    string partition {"Canada"};
-    string row {"Katherines,The"};
-    string property {"Home"};
-    string prop_val {"Vancouver"};
-    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
-    cerr << "put result " << put_result << endl;
-    assert (put_result == status_codes::OK);
-
-    pair<status_code,value> result {
-      do_request (methods::GET,
-		  string(GetFixture::addr)
-		  + string(GetFixture::table))};
-
-    cout << "result.second: " << result.second << endl;
-
-    //cout << "Get All result.second: " << result.second << endl;
-    CHECK(result.second.is_array());
-    CHECK_EQUAL(2, result.second.as_array().size());
-
-    /*
-      Checking the body is not well-supported by UnitTest++, as we have to test
-      independent of the order of returned values.
-     */
-    //CHECK_EQUAL(body.serialize(), string("{\"")+string(GetFixture::property)+ "\":\""+string(GetFixture::prop_val)+"\"}");
-    /*
-    CHECK_EQUAL(status_codes::OK, result.first);
-    value obj1 {
-      value::object(vector<pair<string,value>> {
-          make_pair(string("Partition"), value::string(partition)),
-          make_pair(string("Row"), value::string(row)),
-          make_pair(property, value::string(prop_val))
-      })
-    };
-    value obj2 {
-      value::object(vector<pair<string,value>> {
-          make_pair(string("Partition"), value::string(GetFixture::partition)),
-          make_pair(string("Row"), value::string(GetFixture::row)),
-          make_pair(string(GetFixture::property), value::string(GetFixture::prop_val))
-      })
-    };
-    vector<object> exp {
-      obj1.as_object(),
-      obj2.as_object()
-    };
-    compare_json_arrays(exp, result.second);
-    CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
-  }
-  */
-
-  /*
-    Test of GET all from specific partition
-    Essentially the same test as GetSingle
-  */
-  TEST_FIXTURE(GetFixture, GetAllSpecificPartition) {
-
-    /*
-    // Basic cases
-    string partition {"Katherines,The"};
-    string row {"Canada"};
-    string property {"Home"};
-    string prop_val {"Vancouver"};
-    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
-    cerr << "put result " << put_result << endl;
-    assert (put_result == status_codes::OK);
-
-    string partition2 {"Franklin,Aretha"};
-    string row2 {"Canada"};
-    string property2 {"Home"};
-    string prop_val2 {"Surrey"};
-    int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
-    cerr << "put result2 " << put_result2 << endl;
-    assert (put_result2 == status_codes::OK);
-
-    string partition3 {"Katherines,The"};
-    string row3 {"Canada"};
-    string property3 {"Home"};
-    string prop_val3 {"Vancouver"};
-    int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
-    cerr << "put result3 " << put_result3 << endl;
-    assert (put_result3 == status_codes::OK);
-
-    string partition4 {"Franklin,Aretha"};
-    string row4 {"Sweden"};
-    string property4 {"Gender"};
-    string prop_val4 {"Female"};
-    int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
-    cerr << "put result4 " << put_result4 << endl;
-    assert (put_result4 == status_codes::OK);
-    */
-
-    /*
-    // Edge case: 0 matches
-    string partition {"Katherines,The"};
-    string row {"Canada"};
-    string property {"Home"};
-    string prop_val {"Vancouver"};
-    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
-    cerr << "put result " << put_result << endl;
-    assert (put_result == status_codes::OK);
-
-    string partition2 {"Gaga,Lady"};
-    string row2 {"Canada"};
-    string property2 {"Home"};
-    string prop_val2 {"Surrey"};
-    int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
-    cerr << "put result2 " << put_result2 << endl;
-    assert (put_result2 == status_codes::OK);
-
-    string partition3 {"Katherines,The"};
-    string row3 {"Canada"};
-    string property3 {"Home"};
-    string prop_val3 {"Vancouver"};
-    int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
-    cerr << "put result3 " << put_result3 << endl;
-    assert (put_result3 == status_codes::OK);
-
-    string partition4 {"Parks,Rosa"};
-    string row4 {"Sweden"};
-    string property4 {"Gender"};
-    string prop_val4 {"Female"};
-    int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
-    cerr << "put result4 " << put_result4 << endl;
-    assert (put_result4 == status_codes::OK);
-    */
-
-    // Edge case: all matches
-    string partition {"Franklin,Aretha"};
-    string row {"France"};
-    string property {"Home"};
-    string prop_val {"Vancouver"};
-    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
-    cerr << "put result " << put_result << endl;
-    assert (put_result == status_codes::OK);
-
-    string partition2 {"Franklin,Aretha"};
-    string row2 {"Germany"};
-    string property2 {"From"};
-    string prop_val2 {"Surrey"};
-    int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
-    cerr << "put result2 " << put_result2 << endl;
-    assert (put_result2 == status_codes::OK);
-
-    string partition3 {"Franklin,Aretha"};
-    string row3 {"Canada"};
-    string property3 {"Live"};
-    string prop_val3 {"Burnaby"};
-    int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
-    cerr << "put result3 " << put_result3 << endl;
-    assert (put_result3 == status_codes::OK);
-
-    string partition4 {"Franklin,Aretha"};
-    string row4 {"Sweden"};
-    string property4 {"Gender"};
-    string prop_val4 {"Female"};
-    int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
-    cerr << "put result4 " << put_result4 << endl;
-    assert (put_result4 == status_codes::OK);
-
-    pair<status_code, value> result {
-      do_request (methods::GET,
-      string(GetFixture::addr)
-      + string(GetFixture::table) + "/"
-		  + "Franklin,Aretha" + "/"
-		  + "*")};
-
-      cout << "result.second:" << result.second << endl;
-
-      CHECK(result.second.is_array());
-      CHECK_EQUAL(5, result.second.as_array().size());
-
-      CHECK_EQUAL(status_codes::OK, result.first);
-      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
-      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition2, row2));
-      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition3, row3));
-      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition4, row4));
-    }
-    
-    /*
-      Test of GET all entities containing all specified properties
-    */
-
-    TEST_FIXTURE(GetFixture, GetAllSpecificProperties) {
-
-      string partition {"Katherines,The"};
-      string row {"Canada"};
-      string property {"Home"};
-      string prop_val {"Vancouver"};
-      /*
-        Could not initialize json object to pass the do_request() with 3 arguments
-        so we left the test as a GetAll test
-      */
-      // value put_json_body {};
-      // put_json_body[0] = value("Home");
-      // put_json_body[1] = value("*");
-      int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
-      cerr << "put result " << put_result << endl;
-      assert (put_result == status_codes::OK);
-
-      pair<status_code, value> result {
-        do_request (methods::GET,
-        string(GetFixture::addr)
-        + string(GetFixture::table))};
-      CHECK(result.second.is_array());
-      CHECK_EQUAL(2, result.second.as_array().size());
-
-      //cout << "result.second:" << result.second << endl;
-      //cout << "result.second.as_array:" ;<< result.second.as_array() << endl;
-
-      // bool wrongPropertyFlag {false};
-      // if (json_body.size () > 0) { // There was a body
-      //   for (const auto v : json_body) {
-      //     if (v != property) {
-      //       wrongPropertyFlag = true;
-      //     }
-      //   }
-      // }
-
-      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
-    }
-
-    // Tests that should end with status_codes::OK (200)
-    TEST_FIXTURE(GetFixture, ReadEntityAuth) {
-
-      cout << "Requesting read token" << endl;
-      pair<status_code,string> token_res {
-        get_read_token(GetFixture::auth_addr,
-                         GetFixture::userid,
-                         GetFixture::user_pwd)};
-      cout << "Token response " << token_res.first << endl;
-      CHECK_EQUAL (token_res.first, status_codes::OK);
-
-      pair<status_code,value> result {
-        do_request (methods::GET,
-                    string(GetFixture::addr)
-                    + read_entity_auth + "/"
-                    + GetFixture::table + "/"
-                    + token_res.second + "/"
-                    + GetFixture::partition + "/"
-                    + GetFixture::row)};
-      CHECK_EQUAL(status_codes::OK, result.first);
-
-    }
-
-    // Tests that should end with status_codes::BadRequest (400)
-    TEST_FIXTURE(GetFixture, ReadEntityAuth_BadRequest) {
-
-      cout << "Requesting read token" << endl;
-      pair<status_code,string> token_res {
-        get_read_token(GetFixture::auth_addr,
-                         GetFixture::userid,
-                         GetFixture::user_pwd)};
-      cout << "Token response " << token_res.first << endl;
-      CHECK_EQUAL (token_res.first, status_codes::OK);
-
-      // No table name
-      pair<status_code,value> result {
-        do_request (methods::GET,
-                    string(GetFixture::addr)
-                    + read_entity_auth + "/"
-                    + token_res.second + "/"
-                    + GetFixture::partition + "/"
-                    + GetFixture::row)};
-      CHECK_EQUAL(status_codes::OK, result.first);
-
-      // No token
-      result = do_request (methods::GET,
-                    string(GetFixture::addr)
-                    + read_entity_auth + "/"
-                    + GetFixture::table + "/"
-                    + GetFixture::partition + "/"
-                    + GetFixture::row);
-      CHECK_EQUAL(status_codes::OK, result.first);
-
-      // No partition
-      result = do_request (methods::GET,
-                    string(GetFixture::addr)
-                    + read_entity_auth + "/"
-                    + GetFixture::table + "/"
-                    + token_res.second + "/"
-                    + GetFixture::row);
-      CHECK_EQUAL(status_codes::OK, result.first);
-
-      // No row
-      result = do_request (methods::GET,
-                    string(GetFixture::addr)
-                    + read_entity_auth + "/"
-                    + GetFixture::table + "/"
-                    + token_res.second + "/"
-                    + GetFixture::partition);
-      CHECK_EQUAL(status_codes::OK, result.first);
-
-    }
-
-    // Tests that should end with status_codes::NotFound (404)
-    TEST_FIXTURE(GetFixture, ReadEntityAuth_NotFound) {
-
-      cout << "Requesting read token" << endl;
-      pair<status_code,string> token_res {
-        get_read_token(GetFixture::auth_addr,
-                         GetFixture::userid,
-                         GetFixture::user_pwd)};
-      cout << "Token response " << token_res.first << endl;
-      CHECK_EQUAL (token_res.first, status_codes::OK);
-
-      // Invalid table name
-      pair<status_code,value> result {
-        do_request (methods::GET,
-                    string(GetFixture::addr)
-                    + read_entity_auth + "/"
-                    + "WrongTable" + "/"
-                    + token_res.second + "/"
-                    + GetFixture::partition + "/"
-                    + GetFixture::row)};
-      CHECK_EQUAL(status_codes::OK, result.first);
-
-      // Invalid partition and row
-      result = do_request (methods::GET,
-                          string(GetFixture::addr)
-                          + read_entity_auth + "/"
-                          + "WrongTable" + "/"
-                          + token_res.second + "/"
-                          + GetFixture::partition + "/"
-                          + GetFixture::row);
-      CHECK_EQUAL(status_codes::OK, result.first);
-    }
-}
+//     // Tests that should end with status_codes::OK (200)
+//     TEST_FIXTURE(GetFixture, ReadEntityAuth) {
+//
+//       cout << "Requesting read token" << endl;
+//       pair<status_code,string> token_res {
+//         get_read_token(GetFixture::auth_addr,
+//                          GetFixture::userid,
+//                          GetFixture::user_pwd)};
+//       cout << "Token response " << token_res.first << endl;
+//       CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//       pair<status_code,value> result {
+//         do_request (methods::GET,
+//                     string(GetFixture::addr)
+//                     + read_entity_auth + "/"
+//                     + GetFixture::table + "/"
+//                     + token_res.second + "/"
+//                     + GetFixture::partition + "/"
+//                     + GetFixture::row)};
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//
+//     }
+//
+//     // Tests that should end with status_codes::BadRequest (400)
+//     TEST_FIXTURE(GetFixture, ReadEntityAuth_BadRequest) {
+//
+//       cout << "Requesting read token" << endl;
+//       pair<status_code,string> token_res {
+//         get_read_token(GetFixture::auth_addr,
+//                          GetFixture::userid,
+//                          GetFixture::user_pwd)};
+//       cout << "Token response " << token_res.first << endl;
+//       CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//       // No table name
+//       pair<status_code,value> result {
+//         do_request (methods::GET,
+//                     string(GetFixture::addr)
+//                     + read_entity_auth + "/"
+//                     + token_res.second + "/"
+//                     + GetFixture::partition + "/"
+//                     + GetFixture::row)};
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//
+//       // No token
+//       result = do_request (methods::GET,
+//                     string(GetFixture::addr)
+//                     + read_entity_auth + "/"
+//                     + GetFixture::table + "/"
+//                     + GetFixture::partition + "/"
+//                     + GetFixture::row);
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//
+//       // No partition
+//       result = do_request (methods::GET,
+//                     string(GetFixture::addr)
+//                     + read_entity_auth + "/"
+//                     + GetFixture::table + "/"
+//                     + token_res.second + "/"
+//                     + GetFixture::row);
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//
+//       // No row
+//       result = do_request (methods::GET,
+//                     string(GetFixture::addr)
+//                     + read_entity_auth + "/"
+//                     + GetFixture::table + "/"
+//                     + token_res.second + "/"
+//                     + GetFixture::partition);
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//
+//     }
+//
+//     // Tests that should end with status_codes::NotFound (404)
+//     TEST_FIXTURE(GetFixture, ReadEntityAuth_NotFound) {
+//
+//       cout << "Requesting read token" << endl;
+//       pair<status_code,string> token_res {
+//         get_read_token(GetFixture::auth_addr,
+//                          GetFixture::userid,
+//                          GetFixture::user_pwd)};
+//       cout << "Token response " << token_res.first << endl;
+//       CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//       // Invalid table name
+//       pair<status_code,value> result {
+//         do_request (methods::GET,
+//                     string(GetFixture::addr)
+//                     + read_entity_auth + "/"
+//                     + "WrongTable" + "/"
+//                     + token_res.second + "/"
+//                     + GetFixture::partition + "/"
+//                     + GetFixture::row)};
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//
+//       // Invalid partition and row
+//       result = do_request (methods::GET,
+//                           string(GetFixture::addr)
+//                           + read_entity_auth + "/"
+//                           + "WrongTable" + "/"
+//                           + token_res.second + "/"
+//                           + GetFixture::partition + "/"
+//                           + GetFixture::row);
+//       CHECK_EQUAL(status_codes::OK, result.first);
+//     }
+// }
 
 class AuthFixture {
 public:
@@ -1006,7 +1007,5 @@ SUITE(UPDATE_AUTH) {
 
 
   }
-
-
-
+}
 }
