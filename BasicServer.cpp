@@ -167,7 +167,6 @@ void handle_get(http_request message) {
     message.reply(status_codes::BadRequest);
     return;
   }
-
   //
   //initialize json_body
   unordered_map<string,string> json_body {get_json_body (message)};
@@ -221,7 +220,6 @@ void handle_get(http_request message) {
       else{
         while (it != end) {
           cout << "Key: " << it->partition_key() << " / " << it->row_key() << endl;
-
           prop_vals_t keys {
       make_pair("Partition",value::string(it->partition_key())),
       make_pair("Row", value::string(it->row_key()))};
@@ -354,11 +352,12 @@ void handle_put(http_request message) {
   cout << endl << "**** PUT " << path << endl;
   auto paths = uri::split_path(path);
   // Need at least an operation, table name, partition, and row
+  unordered_map<string,string> json_body {get_json_body (message)}; //getting json body
+
   if (paths.size() < 4) {
     message.reply(status_codes::BadRequest);
     return;
   }
-
 
   unordered_map<string,string> json_body {get_json_body (message)};
 
@@ -370,7 +369,6 @@ void handle_put(http_request message) {
   }
 
   table_entity entity {paths[2], paths[3]};
-
 
 
   if(paths[0] == update_entity_auth){
@@ -451,7 +449,7 @@ void handle_put(http_request message) {
   if (paths[0] == update_entity) {
     cout << "Update " << entity.partition_key() << " / " << entity.row_key() << endl;
     table_entity::properties_type& properties = entity.properties();
-    for (const auto v : get_json_body(message)) {
+    for (const auto v : json_body) {
       properties[v.first] = entity_property {v.second};
     }
 

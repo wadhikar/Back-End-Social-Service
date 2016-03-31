@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include <cpprest/http_client.h>
 #include <cpprest/json.h>
@@ -129,9 +130,27 @@ int delete_table (const string& addr, const string& table) {
 int put_entity(const string& addr, const string& table, const string& partition, const string& row, const string& prop, const string& pstring) {
   pair<status_code,value> result {
     do_request (methods::PUT,
-		addr + "UpdateEntity/" + table + "/" + partition + "/" + row,
-		value::object (vector<pair<string,value>>
-			       {make_pair(prop, value::string(pstring))}))};
+                addr + update_entity_admin + "/" + table + "/" + partition + "/" + row,
+                value::object (vector<pair<string,value>>
+                               {make_pair(prop, value::string(pstring))}))};
+  return result.first;
+}
+
+/*
+  Utility to put an entity with multiple properties
+
+  addr: Prefix of the URI (protocol, address, and port)
+  table: Table in which to insert the entity
+  partition: Partition of the entity
+  row: Row of the entity
+  props: vector of string/value pairs representing the properties
+ */
+int put_entity(const string& addr, const string& table, const string& partition, const string& row,
+              const vector<pair<string,value>>& props) {
+  pair<status_code,value> result {
+    do_request (methods::PUT,
+               addr + "UpdateEntity/" + table + "/" + partition + "/" + row,
+               value::object (props))};
   return result.first;
 }
 
@@ -182,6 +201,17 @@ SUITE(GET) {
       if (put_result != status_codes::OK) {
         throw std::exception();
       }
+    }
+    int put_result {put_entity (addr, table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    if (put_result != status_codes::OK) {
+      throw std::exception();
+    }
+
+  ~BasicFixture() {
+    int del_ent_result {delete_entity (addr, table, partition, row)};
+    if (del_ent_result != status_codes::OK) {
+      throw std::exception();
     }
     ~GetFixture() {
       int del_ent_result {delete_entity (addr, table, partition, row)};
@@ -244,6 +274,9 @@ SUITE(GET) {
       do_request (methods::GET,
 		  string(GetFixture::addr)
 		  + string(GetFixture::table))};
+
+    cout << "result.second: " << result.second << endl;
+
     //cout << "Get All result.second: " << result.second << endl;
     CHECK(result.second.is_array());
     CHECK_EQUAL(2, result.second.as_array().size());
@@ -274,6 +307,23 @@ SUITE(GET) {
     cerr << "put result " << put_result << endl;
     assert (put_result == status_codes::OK);
 
+    pair<status_code, value> result {
+      do_request (methods::GET,
+      string(GetFixture::addr)
+      + GetFixture::table + "/"
+		  + GetFixture::partition + "/"
+		  + "*")};
+
+      CHECK(result.second.is_array());
+      CHECK_EQUAL(2, result.second.as_array().size());
+
+      // CHECK_EQUAL(string("{\"")
+      // + GetFixture::partition
+      // + "\"}",
+      // result.second.serialize());
+      CHECK_EQUAL(status_codes::OK, result.first);
+
+      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
     string partition2 {"Franklin,Aretha"};
     string row2 {"Canada"};
     string property2 {"Home"};
@@ -299,6 +349,7 @@ SUITE(GET) {
     assert (put_result4 == status_codes::OK);
     */
 
+    /*
     // Edge case: 0 matches
     string partition {"Katherines,The"};
     string row {"Canada"};
@@ -331,7 +382,40 @@ SUITE(GET) {
     int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
     cerr << "put result4 " << put_result4 << endl;
     assert (put_result4 == status_codes::OK);
+    */
 
+    // Edge case: all matches
+    string partition {"Franklin,Aretha"};
+    string row {"France"};
+    string property {"Home"};
+    string prop_val {"Vancouver"};
+    int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    assert (put_result == status_codes::OK);
+
+    string partition2 {"Franklin,Aretha"};
+    string row2 {"Germany"};
+    string property2 {"From"};
+    string prop_val2 {"Surrey"};
+    int put_result2 {put_entity (GetFixture::addr, GetFixture::table, partition2, row2, property2, prop_val2)};
+    cerr << "put result2 " << put_result2 << endl;
+    assert (put_result2 == status_codes::OK);
+
+    string partition3 {"Franklin,Aretha"};
+    string row3 {"Canada"};
+    string property3 {"Live"};
+    string prop_val3 {"Burnaby"};
+    int put_result3 {put_entity (GetFixture::addr, GetFixture::table, partition3, row3, property3, prop_val3)};
+    cerr << "put result3 " << put_result3 << endl;
+    assert (put_result3 == status_codes::OK);
+
+    string partition4 {"Franklin,Aretha"};
+    string row4 {"Sweden"};
+    string property4 {"Gender"};
+    string prop_val4 {"Female"};
+    int put_result4 {put_entity (GetFixture::addr, GetFixture::table, partition4, row4, property4, prop_val4)};
+    cerr << "put result4 " << put_result4 << endl;
+    assert (put_result4 == status_codes::OK);
 
     pair<status_code, value> result {
       do_request (methods::GET,
@@ -343,12 +427,12 @@ SUITE(GET) {
       cout << "result.second:" << result.second << endl;
 
       CHECK(result.second.is_array());
-      CHECK_EQUAL(3, result.second.as_array().size());
+      CHECK_EQUAL(5, result.second.as_array().size());
 
       CHECK_EQUAL(status_codes::OK, result.first);
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition2, row2));
-      //CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition3, row3));
+      CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition3, row3));
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition4, row4));
     }
 
@@ -362,6 +446,13 @@ SUITE(GET) {
       string row {"Canada"};
       string property {"Home"};
       string prop_val {"Vancouver"};
+      /*
+        Could not initialize json object to pass the do_request() with 3 arguments
+        so we left the test as a GetAll test
+      */
+      // value put_json_body {};
+      // put_json_body[0] = value("Home");
+      // put_json_body[1] = value("*");
       int put_result {put_entity (GetFixture::addr, GetFixture::table, partition, row, property, prop_val)};
       cerr << "put result " << put_result << endl;
       assert (put_result == status_codes::OK);
@@ -370,7 +461,6 @@ SUITE(GET) {
         do_request (methods::GET,
         string(GetFixture::addr)
         + string(GetFixture::table))};
-
       CHECK(result.second.is_array());
       CHECK_EQUAL(2, result.second.as_array().size());
 
@@ -387,6 +477,35 @@ SUITE(GET) {
       // }
 
       CHECK_EQUAL(status_codes::OK, delete_entity (GetFixture::addr, GetFixture::table, partition, row));
+    }
+}
+
+class AuthFixture {
+public:
+  static constexpr const char* addr {"http://localhost:34568/"};
+  static constexpr const char* auth_addr {"http://localhost:34570/"};
+  static constexpr const char* userid {"user"};
+  static constexpr const char* user_pwd {"user"};
+  static constexpr const char* auth_table {"AuthTable"};
+  static constexpr const char* auth_table_partition {"Userid"};
+  static constexpr const char* auth_pwd_prop {"Password"};
+  static constexpr const char* table {"DataTable"};
+  static constexpr const char* partition {"USA"};
+  static constexpr const char* row {"Franklin,Aretha"};
+  static constexpr const char* property {"Song"};
+  static constexpr const char* prop_val {"RESPECT"};
+
+public:
+  AuthFixture() {
+    int make_result {create_table(addr, table)};
+    cerr << "create result " << make_result << endl;
+    if (make_result != status_codes::Created && make_result != status_codes::Accepted) {
+      throw std::exception();
+    }
+    int put_result {put_entity (addr, table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    if (put_result != status_codes::OK) {
+      throw std::exception();
     }
 }
 
