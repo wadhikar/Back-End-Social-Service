@@ -204,12 +204,13 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     while (it != end) {
-      // pair<string,string> p;
-      // for( const auto v : json_body ) {
-      //   p = v;
-      // }
-      //unordered_map<string,string> propertyPWD {it->properties().find("Password")};
-      if(it->row_key() == paths[1] && json_body.second == (it->properties())){
+      pair<string,string> p;
+      for( const auto v : json_body ) {
+        p = v;
+      }
+      unordered_map<string,entity_property> propertyPWD {it->properties()};
+      unordered_map<string,entity_property>::iterator property_it;
+      if(it->row_key() == paths[1] && p.second == (property_it->second.str())){
           //if the userID, and its password matches, return the token with permission of read-only
           do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
           message.reply(status_codes::OK);
