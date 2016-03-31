@@ -182,7 +182,7 @@ void handle_get(http_request message) {
   if (paths[0] == read_entity) {
 
     // GET all entries in table or GET all entities containing all specified properties
-    if (paths.size() == 1) {
+    if (paths.size() == 2) {
       table_query query {};
       table_query_iterator end;
       table_query_iterator it = table.execute_query(query);
@@ -263,7 +263,7 @@ void handle_get(http_request message) {
     }
     // GET specific entry: Partition == paths[1], Row == paths[2]
 
-    table_operation retrieve_operation {table_operation::retrieve_entity(paths[1], paths[2])};
+    table_operation retrieve_operation {table_operation::retrieve_entity(paths[2], paths[3])};
     table_result retrieve_result {table.execute(retrieve_operation)};
     cout << "HTTP code: " << retrieve_result.http_status_code() << endl;
     if (retrieve_result.http_status_code() == status_codes::NotFound) {
@@ -343,8 +343,6 @@ void handle_post(http_request message) {
 status_codes::OK (200): Table found and all entities extended with the specified name/value property
   */
 
-const string Add_Property {"AddProperty"};/////////////////////
-const string Update_Property {"UpdateProperty"};
 
 
 void handle_put(http_request message) {
@@ -358,9 +356,6 @@ void handle_put(http_request message) {
     message.reply(status_codes::BadRequest);
     return;
   }
-
-  unordered_map<string,string> json_body {get_json_body (message)};
-
 
   cloud_table table {table_cache.lookup_table(paths[1])};
   if ( ! table.exists()) {
@@ -523,6 +518,9 @@ void handle_delete(http_request message) {
   Wait for a carriage return, then shut the server down.
  */
 int main (int argc, char const * argv[]) {
+
+  table_cache.init(storage_connection_string);
+
   http_listener listener {def_url};
   listener.support(methods::GET, &handle_get);
   listener.support(methods::POST, &handle_post);
