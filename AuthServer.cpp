@@ -93,6 +93,14 @@ prop_str_vals_t get_string_properties (const table_entity::properties_type& prop
   return values;
 }
 
+value build_json_object (const vector<pair<string,string>>& properties) {
+    value result {value::object ()};
+    for (auto& prop : properties) {
+      result[prop.first] = value::string(prop.second);
+    }
+    return result;
+}
+
 /*
   Given an HTTP message with a JSON body, return the JSON
   body as an unordered map of strings to strings.
@@ -193,60 +201,102 @@ void handle_get(http_request message) {
     message.reply(status_codes::BadRequest);    // Need at least an operation and userid
     return;
   }
-
-  cloud_table table {table_cache.lookup_table(paths[0])};
+  cloud_table table {table_cache.lookup_table(auth_table_name)};
   if ( ! table.exists()) {
     message.reply(status_codes::NotFound);//reply NotFound status if table doesn't exist
     return;
 
   }
   else if(paths[0] == get_read_token_op){ //operation for GetReadToken
+
+    string passToStore;
+    string dataPart;
+    string dataRow;
+    vector<string> passwordVector;
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
-    while (it != end) {
-
-      if((it->row_key() == paths[1]) && (json_body.second == (it->properties().find("Password")))){
-        //if the userID, and its password matches, return the token with permission of read-only
-        do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop, table_shared_access_policy::permissions::read);
-        message.reply(status_codes::OK);
-        return;
+    for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
+      if (v->first == auth_table_password_prop) {
+        passwordVector.push_back(v->second);
       }
+    }
+    while( it != end ){
+      const table_entity::properties_type& propertyPWD {it->properties()};
+      for( auto v = propertyPWD.begin(); v != propertyPWD.end(); ++v ) {
 
+        if (v->first == auth_table_password_prop ) {
+          passToStore = v->second.str();
+        }
+
+        if ( v->first == auth_table_partition_prop ) {
+          dataPart = v->second.str();
+        }
+        if ( v->first == auth_table_row_prop ){
+          dataRow = v->second.str();
+        }
+      }
+      if(it->row_key() == paths[1] && passwordVector[0] == passToStore){
+          //if the userID, and its password matches, return the token with permission of read-only
+          cloud_table table2 {table_cache.lookup_table(data_table_name)};
+          pair<status_code,string> tempPair = do_get_token(table2, dataPart, dataRow, table_shared_access_policy::permissions::read);
+          vector<pair<string,string>> pairToReturn {make_pair("token", tempPair.second)};
+          value returnToken = build_json_object(pairToReturn);
+          message.reply(tempPair.first, returnToken);
+          return;
+      }
       ++it; //iteration
     }
     message.reply(status_codes::NotFound); //Here, the userid not found
-
+  }
 
   else if (paths[0] == get_update_token_op){  //oepration for GetUpdateToken
-      /*
-      This operation has the same specification as 'GetReadToken',
-      except the returned token permits update operation as well as reads
-      */
+    /*
+    This operation has the same specification as 'GetReadToken',
+    except the returned token permits update operation as well as reads
+    */
+    string passToStore;
+    string dataPart;
+    string dataRow;
+    vector<string> passwordVector;
     table_query query {};
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
-    while (it != end) {
-        prop_vals_t keys {
+    for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
+      if (v->first == auth_table_password_prop) {
+        passwordVector.push_back(v->second);
+      }
+    }
+    while( it != end ){
+      const table_entity::properties_type& propertyPWD {it->properties()};
+      for( auto v = propertyPWD.begin(); v != propertyPWD.end(); ++v ) {
 
-          if(value::string(it->partition_key()) == paths[1] && json_body.second == (it->properties().find("Password"))){
-            //If the userID, and its password matches, return the token with permission of read and update
-            do_get_token(data_table_name,auth_table_partition_prop,auth_table_row_prop,table_shared_access_policy::permission::read|
-                table_shared_access_policy::permissions::update);
-            message.reply(status_codes::OK);
-            return;
-          }
+        if (v->first == auth_table_password_prop ) {
+          passToStore = v->second.str();
         }
+
+        if ( v->first == auth_table_partition_prop ) {
+          dataPart = v->second.str();
+        }
+        if ( v->first == auth_table_row_prop ){
+          dataRow = v->second.str();
+        }
+      }
+      if(it->row_key() == paths[1] && passwordVector[0] == passToStore){
+          //if the userID, and its password matches, return the token with permission of read and write
+          cloud_table table2 {table_cache.lookup_table(data_table_name)};
+          pair<status_code,string> tempPair =   do_get_token(table2, dataPart, dataRow, table_shared_access_policy::permissions::read |
+                                                                                      table_shared_access_policy::permissions::update);
+          vector<pair<string,string>> pairToReturn {make_pair("token", tempPair.second)};
+          value returnToken = build_json_object(pairToReturn);
+          message.reply(tempPair.first, returnToken);
+          return;
+      }
       ++it;
     }
-
     message.reply(status_codes::NotFound);  //userid is not found
     }
 } //End of Handle-Get
-
-
-
-
 
 
 
