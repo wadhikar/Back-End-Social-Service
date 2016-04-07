@@ -69,6 +69,7 @@ const string data_table_name {"DataTable"};
 
 const string get_read_token_op {"GetReadToken"};
 const string get_update_token_op {"GetUpdateToken"};
+const string get_update_data_op {"GetUpdateData"};
 
 /*
   Cache of opened tables
@@ -295,7 +296,50 @@ void handle_get(http_request message) {
       ++it;
     }
     message.reply(status_codes::NotFound);  //userid is not found
+  }else if(paths[0] == get_update_data_op){
+    string passToStore;
+    string dataPart;
+    string dataRow;
+    vector<string> passwordVector;
+    table_query query {};
+    table_query_iterator end;
+    table_query_iterator it = table.execute_query(query);
+    for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
+      if (v->first == auth_table_password_prop) {
+        passwordVector.push_back(v->second);
+      }
     }
+    while( it != end ){
+      const table_entity::properties_type& propertyPWD {it->properties()};
+      for( auto v = propertyPWD.begin(); v != propertyPWD.end(); ++v ) {
+
+        if (v->first == auth_table_password_prop ) {
+          passToStore = v->second.str();
+        }
+
+        if ( v->first == auth_table_partition_prop ) {
+          dataPart = v->second.str();
+        }
+        if ( v->first == auth_table_row_prop ){
+          dataRow = v->second.str();
+        }
+      }
+      if(it->row_key() == paths[1] && passwordVector[0] == passToStore){
+          //if the userID, and its password matches, return the token with permission of read and write
+          cloud_table table2 {table_cache.lookup_table(data_table_name)};
+          pair<status_code,string> tempPair =   do_get_token(table2, dataPart, dataRow, table_shared_access_policy::permissions::read |
+                                                                                      table_shared_access_policy::permissions::update);
+          vector<pair<string,string>> pairToReturn {make_pair("token", tempPair.second)};
+          pairToReturn.push_back( make_pair("DataPartition", dataPart));
+          pairToReturn.push_back( make_pair("DataRow", dataRow));
+          value returnToken = build_json_object(pairToReturn);
+          message.reply(tempPair.first, returnToken);
+          return;
+      }
+      ++it;
+    }
+    message.reply(status_codes::NotFound);  //userid is not found
+  }
 } //End of Handle-Get
 
 
