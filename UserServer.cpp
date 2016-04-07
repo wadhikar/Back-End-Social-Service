@@ -178,7 +178,7 @@ void handle_post(http_request message) {
   string dataPartition;
   string dataRow;
   string passwordFromBody;
-  vector<string> passwordVector;
+  vector<string> passwordInTable;
   table_query query {};
   table_query_iterator end;
   table_query_iterator it = table.execute_query(query);
@@ -190,7 +190,7 @@ void handle_post(http_request message) {
     // If JSON body has property "Password" then store the password
     if (v->first == auth_table_password_prop) {
       // Adds password to vector
-      passwordVector.push_back(v->second);
+      passwordInTable.push_back(v->second);
     }
   }
 
@@ -243,12 +243,15 @@ void handle_post(http_request message) {
   auto isUserSignedIn {usersSignedIn.find( userid_name )};
 
   // If not signed in, add to usersSignedIn
-  if ( isUserSignedIn != usersSignedIn.end() ) {
+  if ( isUserSignedIn == usersSignedIn.end() ) {
     usersSignedIn.insert( {userid_name,
                             make_tuple( updateToken, dataPartition, dataRow )} );
   }
+  // If already signed in but password in JSON body is incorrect
   else {
-
+    if ( passwordFromBody != passwordInTable[0] ) {
+      message.reply(status_codes::NotFound);
+    }
   }
 
 }
