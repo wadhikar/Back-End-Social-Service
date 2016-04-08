@@ -81,6 +81,8 @@ const string Update_Property {"UpdatePropertyAdmin"};
 const string read_entity {"ReadEntityAdmin"};
 const string read_entity_auth {"ReadEntityAuth"};
 const string update_entity_auth {"UpdateEntityAuth"};
+const string sign_off {"SignOff"};
+const string sign_on {"SignOn"};
 
 const string data_table_name {"DataTable"};
 const string auth_table_name {"AuthTable"};
@@ -168,8 +170,6 @@ void handle_post(http_request message) {
     return;
   }
 
-  unordered_map<string,string> json_body {get_json_body (message)};
-
   // Store userid parameter
   string userid_name {paths[1]};
   // Look up AuthTable
@@ -185,73 +185,90 @@ void handle_post(http_request message) {
 
   unordered_map<string,tuple> usersSignedIn;
 
-  // Store password from given JSON body
-  for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
-    // If JSON body has property "Password" then store the password
-    if (v->first == auth_table_password_prop) {
-      // Adds password to vector
-      passwordInTable.push_back(v->second);
-    }
-  }
+  if ( paths[0] == sign_on ) {
 
-  // Loop through properties to store user's Partition and Row for looking up
-  // in DataTable
-  while( it != end ){
-    const table_entity::properties_type& propertyPWD {it->properties()};
-    for( auto v = propertyPWD.begin(); v != propertyPWD.end(); ++v ) {
+    unordered_map<string,string> json_body {get_json_body (message)};
 
-      if (v->first == auth_table_password_prop ) {
-        passwordFromBody = v->second.str();
-      }
-
-      if ( v->first == auth_table_partition_prop ) {
-        dataPartition = v->second.str();
-      }
-      if ( v->first == auth_table_row_prop ){
-        dataRow = v->second.str();
+    // Store password from given JSON body
+    for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
+      // If JSON body has property "Password" then store the password
+      if (v->first == auth_table_password_prop) {
+        // Adds password to vector
+        passwordInTable.push_back(v->second);
       }
     }
-  }
 
-  // Send a GetReadToken request to AuthServer
-  pair<status_code,value> updateToken {
-             do_request (methods::GET,
-          		    auth_def_url
-          		  + auth_table_name + "/"
-          		  + auth_table_partition + "/"
-          		  + userid_name)
-              };
+    // Loop through properties to store user's Partition and Row for looking up
+    // in DataTable
+    while( it != end ){
+      const table_entity::properties_type& properties_in_auth_table {it->properties()};
+      for( auto v = properties_in_auth_table.begin(); v != properties_in_auth_table.end(); ++v ) {
 
-  if ( status_codes::NotFound == updateToken.first) {
-    message.reply(status_codes::NotFound);
-  }
+        if (v->first == auth_table_password_prop ) {
+          passwordFromBody = v->second.str();
+        }
 
-  // Send a ReadEntityAuth request to BasicServer
-  pair<status_code,value> user_in_data_table {
-             do_request (methods::GET,
-          		    basic_def_url
-          		  + data_table_name + "/"
-                + updateToken + "/"
-          		  + dataPartition + "/"
-          		  + dataRow)
-              };
-  if ( status_codes::NotFound == user_in_data_table.first) {
-    message.reply(status_codes::NotFound);
-  }
+        if ( v->first == auth_table_partition_prop ) {
+          dataPartition = v->second.str();
+        }
+        if ( v->first == auth_table_row_prop ){
+          dataRow = v->second.str();
+        }
+      }
+    }
 
-  // Check to see if user has signed in previously
-  auto isUserSignedIn {usersSignedIn.find( userid_name )};
+    // Send a GetReadToken request to AuthServer
+    pair<status_code,value> updateToken {
+               do_request (methods::GET,
+            		    auth_def_url
+            		  + auth_table_name + "/"
+            		  + auth_table_partition + "/"
+            		  + userid_name)
+                };
 
-  // If not signed in, add to usersSignedIn
-  if ( isUserSignedIn == usersSignedIn.end() ) {
-    usersSignedIn.insert( {userid_name,
-                            make_tuple( updateToken, dataPartition, dataRow )} );
-  }
-  // If already signed in but password in JSON body is incorrect
-  else {
-    if ( passwordFromBody != passwordInTable[0] ) {
+    if ( status_codes::NotFound == updateToken.first) {
       message.reply(status_codes::NotFound);
     }
+
+    // Send a ReadEntityAuth request to BasicServer
+    pair<status_code,value> user_in_data_table {
+               do_request (methods::GET,
+            		    basic_def_url
+            		  + data_table_name + "/"
+                  + updateToken + "/"
+            		  + dataPartition + "/"
+            		  + dataRow)
+                };
+    if ( status_codes::NotFound == user_in_data_table.first) {
+      message.reply(status_codes::NotFound);
+    }
+
+    // Check to see if user has signed in previously
+    auto isUserSignedIn {usersSignedIn.find( userid_name )};
+
+    // If not signed in, add to usersSignedIn
+    if ( isUserSignedIn == usersSignedIn.end() ) {
+      usersSignedIn.insert( {userid_name,
+                              make_tuple( updateToken, dataPartition, dataRow )} );
+    }
+    // If already signed in but password in JSON body is incorrect
+    else {
+      if ( passwordFromBody != passwordInTable[0] ) {
+        message.reply(status_codes::NotFound);
+      }
+    }
+  }
+
+  else if ( paths[0] == sign_off ) {
+
+    // Check if user is signed in
+    auto isUserSignedIn {usersSignedIn.find( userid_name )};
+
+    if( isUserSignedIn == usersSignedIn.end() ) {
+      message.reply(status_codes::NotFound);
+    }
+
+    usersSignedIn.erase( userid_name );
   }
 
 }
