@@ -88,6 +88,10 @@ const string data_table_name {"DataTable"};
 const string auth_table_name {"AuthTable"};
 
 const string auth_table_partition {"Userid"}
+
+// Unordered map of users currently signed in
+unordered_map<string,tuple> usersSignedIn;
+
 /*
   Convert properties represented in Azure Storage type
   to prop_vals_t type.
@@ -182,8 +186,6 @@ void handle_post(http_request message) {
   table_query query {};
   table_query_iterator end;
   table_query_iterator it = table.execute_query(query);
-
-  unordered_map<string,tuple> usersSignedIn;
 
   if ( paths[0] == sign_on ) {
 

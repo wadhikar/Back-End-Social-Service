@@ -217,7 +217,9 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
+      // If JSON body has property "Password" then store the password
       if (v->first == auth_table_password_prop) {
+        // Adds password to vector
         passwordVector.push_back(v->second);
       }
     }
@@ -263,7 +265,9 @@ void handle_get(http_request message) {
     table_query_iterator end;
     table_query_iterator it = table.execute_query(query);
     for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
+      // If JSON body has property "Password" then store the password
       if (v->first == auth_table_password_prop) {
+        // Adds password to vector
         passwordVector.push_back(v->second);
       }
     }
