@@ -268,7 +268,11 @@ void handle_post(http_request message) {
       message.reply(status_codes::NotFound);
     }
 
-    usersSignedIn.erase( userid_name );
+    auto isUserRemoved {usersSignedIn.erase( userid_name )};
+
+    if( isUserRemoved == 1 ) {
+      message.reply(status_codes::OK)
+    }
   }
 
 }
