@@ -86,6 +86,11 @@ const string data_table_name {"DataTable"};
 const string auth_table_name {"AuthTable"};
 
 const string auth_table_partition {"Userid"}
+
+
+/////////////////////////////////////////////////////////////
+const string add_friend_user{"AddFriend"};
+
 /*
   Convert properties represented in Azure Storage type
   to prop_vals_t type.
@@ -255,6 +260,86 @@ void handle_post(http_request message) {
   }
 
 }
+
+
+
+//////////////////////////////Handle_Put
+
+void handle_put(http_request message){
+  string path {uri::decode(message.relative_uri().path())};
+  cout << endl << "**** PUT " << path << endl;
+  auto paths = uri::split_path(path);
+
+
+  if(paths[0] == add_friend_user){
+
+    if(paths.size() != 4){ //Operation, Userid, friend country, and full friend name
+      message.reply(status_codes::BadRequest);
+      return;
+    }
+
+    string user_id {paths[1]};
+    string friend_country{paths[2]};
+    string friend_full_name{paths[3]};
+
+    //check if user is signed in
+    auto check_signed = usersSignedIn.find(paths[1]);
+    if(check_signed = usersSignedIn.end){
+      //not signed-in
+      message.reply(status_codes::Forbidden);
+      return;
+    }
+
+    else{ //user is signed-in
+      string friend_token = {get<0>(usersSignedIn[user_id])};
+      string friend_partition = {get<1>(usersSignedIn[user_id])};
+      string friend_row = {get<2>(usersSignedIn[user_id])};
+
+      pair<status_code,value> result {
+        do_request(methods::GET, basic_def_url + read_entity_auth+"/"+
+          data_table_name+"/"+friend_token+"/"+friend_partition+"/"+friend_row)
+      };
+
+      string friend_list = get_json_object_prop(result.second, "Friends");
+
+      //getting a vector of country, name pairs
+      friends_list_t friends_list_val = parse_friends_list(friend_list);
+
+      for(int i = 0; i < friends_list_val.size(); ++i){
+        if(friends_list_val[i].first == friend_country && friends_list_val[i].second == friend_full_name){
+          message.reply(status_codes::OK);
+          cout<<"Already friend" << endl;
+          //even if its already friend, return OK
+          return;
+        }
+      }
+
+      //At this point, new friend is not already in the friends list
+      friends_list_val.push_back(make_pair(friend_country,friend_full_name));
+
+      //converting new friends list to string to replace the old friends list value
+      string friend_list_new = friends_list_to_string(friends_list_val);
+
+      value friend_json_object {build_json_value (vector<pair<string,string>>{make_pair("Friends",friend_list_new)})};
+
+      pair<status_code,value> result_a{
+        do_request(methods::PUT, basic_def_url + update_entity_auth +"/"+
+          data_table_name + "/" + friend_token + "/" + friend_partition + "/"+ friend_row,friend_json_object)
+      };
+
+      message.reply(status_codes::OK);
+      return;
+
+
+    }
+
+
+
+  }
+}
+
+
+
 /*
   Main server routine
 
