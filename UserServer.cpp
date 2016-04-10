@@ -90,6 +90,7 @@ const string auth_table_partition {"Userid"}
 
 /////////////////////////////////////////////////////////////
 const string add_friend_user{"AddFriend"};
+const string un_friend_user{"UnFriend"};
 
 /*
   Convert properties represented in Azure Storage type
@@ -330,12 +331,89 @@ void handle_put(http_request message){
       message.reply(status_codes::OK);
       return;
 
+    }
+  }
 
+
+
+  // UNFRIEND 
+
+
+  if(paths[0] == un_friend_user){
+
+    if(paths.size() != 4){
+      message.reply(status_codes::BadRequest);
+      return;
     }
 
+    string unfriend_userid {paths[1]};
+    string unfriend_country{paths[2]};
+    string unfriend_full_name{paths[3]};
 
+    auto check_signed = usersSignedIn.find(paths[1]);
+    if(check_signed == usersSignedIn.end()){
+      //User is not signed in
+      message.reply(status_codes::Forbidden);
+    }
+    else{//user signed-in
 
+      string unfriend_token = {get<0>(usersSignedIn[user_id])};
+      string unfriend_partition = {get<1>(usersSignedIn[user_id])};
+      string unfriend_row = {get<2>(usersSignedIn[user_id])};
+
+      //Checking if the friend exist
+      pair<status_code,value> check{
+        do_request(methods::GET, basic_def_url + read_entity_auth +"/"+
+        data_table_name+"/"+unfriend_country+"/"+unfriend_full_name)
+      };
+
+      if(check.first == status_codes::NotFound){
+        message.reply(status_codes::NotFound);
+        return;
+      }
+
+      pair<status_code,value> result {
+        do_request(methods::GET, basic_def_url + read_entity_auth+"/"+
+          data_table_name+"/"+unfriend_token+"/"+unfriend_partition+"/"+unfriend_row)
+      };
+
+      string friend_list = get_json_object_prop(result.second, "Friends");
+ 
+      friends_list_t friends_list_val = parse_friends_list(friend_list);
+
+      bool checker = false;
+
+      for(int i = 0; i < friends_list_val.size(); ++i){
+        if(friends_list_val[i].first == unfriend_country && friends_list_val[i].second == unfriend_full_name){
+          
+          //friend found
+          friend_list_val.erase(friends_list_val.begin()+i);
+          checker = true;
+        }
+
+      }
+      if(checker == false){
+        //friend doesnt exist 
+        cout << "Friend Does Not Exist" << endl;
+        //output "OK" anyways
+        message.reply(status_codes::OK);
+        return;
+      }
+      else{
+        //NOT SURE ABOUT THIS PART YET 
+        string friend_list_new = friends_list_to_string(friends_list_val);
+        value friend_json_object {build_json_value (vector<pair<string,string>>{make_pair("Friends",friend_list_new)})};
+        pair<status_code,value> result_a{
+          do_request(methods::PUT, basic_def_url + update_entity_auth +"/"+
+            data_table_name + "/" + unfriend_token + "/" + unfriend_partition + "/"+ unfriend_row,friend_json_object)
+        };
+        message.reply(status_codes::OK); 
+        return;
+      }
+
+    }
   }
+
 }
 
 
