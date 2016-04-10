@@ -36,3 +36,6 @@ target_link_libraries (tester ${REST} ${REST_LIBRARIES} ${STORE} ${TEST})
 
 add_executable (authserver AuthServer.cpp TableCache.cpp TableCache.h)
 target_link_libraries (authserver ${REST} ${REST_LIBRARIES} ${STORE})
+
+add_executable (userserver UserServer.cpp ClientUtils.cpp)
+target_link_libraries (userserver ${REST} ${REST_LIBRARIES})

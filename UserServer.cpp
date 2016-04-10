@@ -87,7 +87,7 @@ const string sign_on {"SignOn"};
 const string data_table_name {"DataTable"};
 const string auth_table_name {"AuthTable"};
 
-const string auth_table_partition {"Userid"}
+const string auth_table_partition {"Userid"};
 
 // Unordered map of users currently signed in
 unordered_map<string,tuple> usersSignedIn;
@@ -219,7 +219,7 @@ void handle_post(http_request message) {
       }
     }
 
-    // Send a GetReadToken request to AuthServer
+    // Send a GetUpdateToken request to AuthServer
     pair<status_code,value> updateToken {
                do_request (methods::GET,
             		    auth_def_url
