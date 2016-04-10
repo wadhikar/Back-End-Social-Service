@@ -100,7 +100,7 @@ const string token_prop {"token"};
 const string auth_table_partition {"Userid"};
 
 // Unordered map of users currently signed in
-unordered_map<string,tuple> usersSignedIn;
+unordered_map<string,tuple<string,string,string>> usersSignedIn;
 
 /*
   Convert properties represented in Azure Storage type
@@ -190,6 +190,16 @@ void handle_post(http_request message) {
   // To store password from request
   vector<string> passwordInRequest;
 
+  // Flag for user in usersSignedIn
+  bool userFound {false};
+
+  // Look for user in usersSignedIn
+  for ( auto it = usersSignedIn.begin(); it != usersSignedIn.end(); ++it ) {
+    if ( it->first == userid_name ) {
+      userFound = true;
+    }
+  }
+
   if ( paths[0] == sign_on ) {
 
     unordered_map<string,string> json_body {get_json_body (message)};
@@ -197,7 +207,7 @@ void handle_post(http_request message) {
     // Store password from given JSON body
     for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
       // If JSON body has property "Password" then store the password
-      if (v->first == auth_table_password_prop) {
+      if (v->first == password_prop) {
         // Adds password to vector
         passwordInRequest.push_back(v->second);
       }
@@ -208,11 +218,8 @@ void handle_post(http_request message) {
 
     value passwordObjectToSend { build_json_value( passwordPairToSend ) };
 
-    // Check to see if user has signed in previously
-    auto isUserSignedIn {usersSignedIn.find( userid_name )};
-
     // If user is not signed in, then attempt to sign them on
-    if ( isUserSignedIn == usersSignedIn.end() ) {
+    if ( !userFound ) {
 
       // Send a GetUpdateData request to AuthServer
       pair<status_code,value> updateData {
@@ -230,14 +237,17 @@ void handle_post(http_request message) {
       }
 
       unordered_map<string,string> updateDataJSONBody {
-        unpack_json_object( updateData )
+        unpack_json_object( updateData.second )
       };
 
       // Iterators that point to their respective data
       // in updateDataTokenJSONBody
-      auto dataToken { updateDataJSONBody.find(token_prop) }
-      auto dataPartition { updateDataJSONBody.find(data_partition_prop) };
-      auto dataRow { updateDataJSONBody.find(data_row_prop) };
+      unordered_map<string,string>::const_iterator dataToken {
+        updateDataJSONBody.find(token_prop) };
+      unordered_map<string,string>::const_iterator dataPartition {
+        updateDataJSONBody.find(data_partition_prop) };
+      unordered_map<string,string>::const_iterator dataRow {
+        updateDataJSONBody.find(data_row_prop) };
 
       // Send a ReadEntityAuth request to BasicServer
       pair<status_code,value> user_in_data_table {
@@ -277,10 +287,11 @@ void handle_post(http_request message) {
               		  + userid_name)
                   };
       unordered_map<string,string> passwordCheckBody {
-        unpack_json_object( passwordCheck )
+        unpack_json_object( passwordCheck.second )
       };
 
-      auto passwordInAuthTable { passwordCheckBody.find(password_prop) };
+      unordered_map<string,string>::const_iterator passwordInAuthTable {
+        passwordCheckBody.find(password_prop) };
 
       if ( passwordInRequest[0] == passwordInAuthTable->second ) {
         message.reply(status_codes::OK);
@@ -296,14 +307,14 @@ void handle_post(http_request message) {
     // Check if user is signed in
     auto isUserSignedIn {usersSignedIn.find( userid_name )};
 
-    if( isUserSignedIn == usersSignedIn.end() ) {
+    if( !userFound ) {
       message.reply(status_codes::NotFound);
     }
 
     auto isUserRemoved {usersSignedIn.erase( userid_name )};
 
-    if( isUserRemoved == 1 ) {
-      message.reply(status_codes::OK)
+    if( isUserRemoved.size() == 1 ) {
+      message.reply(status_codes::OK);
     }
   }
 
