@@ -51,8 +51,8 @@ using std::string;
 using std::unordered_map;
 using std::vector;
 using std::tuple;
-using std::get
-using std::make_tuple
+using std::get;
+using std::make_tuple;
 
 using web::http::http_headers;
 using web::http::http_request;
@@ -71,6 +71,7 @@ constexpr const char* user_def_url = "http://localhost:34568";
 
 const string auth_def_url = "http://localhost:34570";
 const string basic_def_url = "http://localhost:34568";
+const string push_def_url = "http://localhost:34574";
 
 const string create_table {"CreateTableAdmin"};
 const string delete_table {"DeleteTableAdmin"};
@@ -88,6 +89,9 @@ const string get_update_data_op {"GetUpdateData"};
 
 const string sign_off {"SignOff"};
 const string sign_on {"SignOn"};
+const string read_friend_list {"ReadFriendList"};
+const string update_status {"UpdateStatus"};
+const string push_status {"PushStatus"};
 
 const string data_table_name {"DataTable"};
 const string auth_table_name {"AuthTable"};
@@ -101,37 +105,6 @@ const string auth_table_partition {"Userid"};
 
 // Unordered map of users currently signed in
 unordered_map<string,tuple<string,string,string>> usersSignedIn;
-
-/*
-  Convert properties represented in Azure Storage type
-  to prop_vals_t type.
- */
-prop_vals_t get_properties (const table_entity::properties_type& properties, prop_vals_t values = prop_vals_t {}) {
-  for (const auto v : properties) {
-    if (v.second.property_type() == edm_type::string) {
-      values.push_back(make_pair(v.first, value::string(v.second.string_value())));
-    }
-    else if (v.second.property_type() == edm_type::datetime) {
-      values.push_back(make_pair(v.first, value::string(v.second.str())));
-    }
-    else if(v.second.property_type() == edm_type::int32) {
-      values.push_back(make_pair(v.first, value::number(v.second.int32_value())));
-    }
-    else if(v.second.property_type() == edm_type::int64) {
-      values.push_back(make_pair(v.first, value::number(v.second.int64_value())));
-    }
-    else if(v.second.property_type() == edm_type::double_floating_point) {
-      values.push_back(make_pair(v.first, value::number(v.second.double_value())));
-    }
-    else if(v.second.property_type() == edm_type::boolean) {
-      values.push_back(make_pair(v.first, value::boolean(v.second.boolean_value())));
-    }
-    else {
-      values.push_back(make_pair(v.first, value::string(v.second.str())));
-    }
-  }
-  return values;
-}
 
 /*
   Given an HTTP message with a JSON body, return the JSON
@@ -354,7 +327,7 @@ void handle_get(http_request message) {
       };
 
       string friends_list = get_json_object_prop(result.second, "Friends");
-      value json_friends {build_json_object (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
+      value json_friends {build_json_value (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
       message.reply(status_codes::OK, json_friends);
       return;
     }
@@ -395,14 +368,14 @@ void handle_put(http_request message) {
         data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow)
       };
 
-      value json_status {build_json_object (vector<pair<string,string>> {make_pair("Status", status)})};
+      value json_status {build_json_value (vector<pair<string,string>> {make_pair("Status", status)})};
       pair<status_code,value> result2 {
         do_request(methods::PUT, basic_def_url + update_entity_auth + "/" +
         data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow, json_status)
       };
 
       string friends_list = get_json_object_prop(result.second, "Friends");
-      value json_friends {build_json_object (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
+      value json_friends {build_json_value (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
       pair<status_code,value> result3 {
         do_request(methods::POST, push_def_url + push_status + "/" +
         dataPartition + "/" + dataRow + "/" + status, json_friends)
