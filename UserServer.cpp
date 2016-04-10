@@ -81,11 +81,21 @@ const string Update_Property {"UpdatePropertyAdmin"};
 const string read_entity {"ReadEntityAdmin"};
 const string read_entity_auth {"ReadEntityAuth"};
 const string update_entity_auth {"UpdateEntityAuth"};
+
+const string get_read_token_op {"GetReadToken"};
+const string get_update_token_op {"GetUpdateToken"};
+const string get_update_data_op {"GetUpdateData"};
+
 const string sign_off {"SignOff"};
 const string sign_on {"SignOn"};
 
 const string data_table_name {"DataTable"};
 const string auth_table_name {"AuthTable"};
+
+const string data_partition_prop {"DataPartition"};
+const string data_row_prop {"DataRow"};
+const string password_prop {"Password"};
+const string token_prop {"token"};
 
 const string auth_table_partition {"Userid"};
 
@@ -176,16 +186,9 @@ void handle_post(http_request message) {
 
   // Store userid parameter
   string userid_name {paths[1]};
-  // Look up AuthTable
-  cloud_table table {table_cache.lookup_table(auth_table_name)};
 
-  string dataPartition;
-  string dataRow;
-  string passwordFromBody;
-  vector<string> passwordInTable;
-  table_query query {};
-  table_query_iterator end;
-  table_query_iterator it = table.execute_query(query);
+  // To store password from request
+  vector<string> passwordInRequest;
 
   if ( paths[0] == sign_on ) {
 
@@ -196,66 +199,93 @@ void handle_post(http_request message) {
       // If JSON body has property "Password" then store the password
       if (v->first == auth_table_password_prop) {
         // Adds password to vector
-        passwordInTable.push_back(v->second);
+        passwordInRequest.push_back(v->second);
       }
     }
 
-    // Loop through properties to store user's Partition and Row for looking up
-    // in DataTable
-    while( it != end ){
-      const table_entity::properties_type& properties_in_auth_table {it->properties()};
-      for( auto v = properties_in_auth_table.begin(); v != properties_in_auth_table.end(); ++v ) {
+    pair<string,string> passwordPairToSend {
+      make_pair( password_prop, passwordInRequest[0] ) };
 
-        if (v->first == auth_table_password_prop ) {
-          passwordFromBody = v->second.str();
-        }
-
-        if ( v->first == auth_table_partition_prop ) {
-          dataPartition = v->second.str();
-        }
-        if ( v->first == auth_table_row_prop ){
-          dataRow = v->second.str();
-        }
-      }
-    }
-
-    // Send a GetUpdateToken request to AuthServer
-    pair<status_code,value> updateToken {
-               do_request (methods::GET,
-            		    auth_def_url
-            		  + auth_table_name + "/"
-            		  + auth_table_partition + "/"
-            		  + userid_name)
-                };
-
-    if ( status_codes::NotFound == updateToken.first) {
-      message.reply(status_codes::NotFound);
-    }
-
-    // Send a ReadEntityAuth request to BasicServer
-    pair<status_code,value> user_in_data_table {
-               do_request (methods::GET,
-            		    basic_def_url
-            		  + data_table_name + "/"
-                  + updateToken + "/"
-            		  + dataPartition + "/"
-            		  + dataRow)
-                };
-    if ( status_codes::NotFound == user_in_data_table.first) {
-      message.reply(status_codes::NotFound);
-    }
+    value passwordObjectToSend { build_json_value( passwordPairToSend ) };
 
     // Check to see if user has signed in previously
     auto isUserSignedIn {usersSignedIn.find( userid_name )};
 
-    // If not signed in, add to usersSignedIn
+    // If user is not signed in, then attempt to sign them on
     if ( isUserSignedIn == usersSignedIn.end() ) {
-      usersSignedIn.insert( {userid_name,
-                              make_tuple( updateToken, dataPartition, dataRow )} );
+
+      // Send a GetUpdateData request to AuthServer
+      pair<status_code,value> updateData {
+                 do_request (methods::GET,
+              		    auth_def_url + "/"
+                    + get_update_data_op + "/"
+              		  + auth_table_name + "/"
+              		  + auth_table_partition + "/"
+              		  + userid_name,
+                      passwordObjectToSend)
+                  };
+
+      if ( status_codes::NotFound == updateData.first) {
+        message.reply(status_codes::NotFound);
+      }
+
+      unordered_map<string,string> updateDataJSONBody {
+        unpack_json_object( updateData )
+      };
+
+      // Iterators that point to their respective data
+      // in updateDataTokenJSONBody
+      auto dataToken { updateDataJSONBody.find(token_prop) }
+      auto dataPartition { updateDataJSONBody.find(data_partition_prop) };
+      auto dataRow { updateDataJSONBody.find(data_row_prop) };
+
+      // Send a ReadEntityAuth request to BasicServer
+      pair<status_code,value> user_in_data_table {
+                 do_request (methods::GET,
+              		    basic_def_url + "/"
+                    + read_entity_auth + "/"
+              		  + data_table_name + "/"
+                    + dataToken->second + "/"
+              		  + dataPartition->second + "/"
+              		  + dataRow->second)
+                  };
+
+      if ( status_codes::NotFound == user_in_data_table.first) {
+        message.reply(status_codes::NotFound);
+      }
+
+      // Once token has been created and user is confirmed to be in data table,
+      // add user to usersSignedIn
+      usersSignedIn.insert(
+        {userid_name, make_tuple( dataToken->second,
+                          dataPartition->second, dataRow->second )} );
+
     }
-    // If already signed in but password in JSON body is incorrect
+
+    // User is already signed in
     else {
-      if ( passwordFromBody != passwordInTable[0] ) {
+
+      // Check if given password matches the one in auth table
+      // Don't have to check for status code b/c user has to be in auth table
+      // if they are already signed in
+      pair<status_code,value> passwordCheck {
+                 do_request (methods::GET,
+              		    auth_def_url + "/"
+                    + read_entity + "/"
+              		  + auth_table_name + "/"
+              		  + auth_table_partition + "/"
+              		  + userid_name)
+                  };
+      unordered_map<string,string> passwordCheckBody {
+        unpack_json_object( passwordCheck )
+      };
+
+      auto passwordInAuthTable { passwordCheckBody.find(password_prop) };
+
+      if ( passwordInRequest[0] == passwordInAuthTable->second ) {
+        message.reply(status_codes::OK);
+      }
+      else {
         message.reply(status_codes::NotFound);
       }
     }
