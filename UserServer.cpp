@@ -259,26 +259,21 @@ void handle_post(http_request message) {
       message.reply(status_codes::NotFound);
     }
   }
-
 }
 
-
-
-//////////////////////////////Handle_Put
+//************* Handle_Put Function here
 
 void handle_put(http_request message){
   string path {uri::decode(message.relative_uri().path())};
   cout << endl << "**** PUT " << path << endl;
   auto paths = uri::split_path(path);
 
-
+//*********ADDFRIEND OPERATION**********
   if(paths[0] == add_friend_user){
-
     if(paths.size() != 4){ //Operation, Userid, friend country, and full friend name
       message.reply(status_codes::BadRequest);
       return;
     }
-
     string user_id {paths[1]};
     string friend_country{paths[2]};
     string friend_full_name{paths[3]};
@@ -306,13 +301,19 @@ void handle_put(http_request message){
       //getting a vector of country, name pairs
       friends_list_t friends_list_val = parse_friends_list(friend_list);
 
+      bool checker = false;
+
       for(int i = 0; i < friends_list_val.size(); ++i){
         if(friends_list_val[i].first == friend_country && friends_list_val[i].second == friend_full_name){
-          message.reply(status_codes::OK);
           cout<<"Already friend" << endl;
-          //even if its already friend, return OK
-          return;
+          checker = true;
         }
+      }
+      if(checker == true){
+        //already friends
+        //return OK anyways
+        message.reply(status_codes::OK);
+        return;
       }
 
       //At this point, new friend is not already in the friends list
@@ -328,17 +329,13 @@ void handle_put(http_request message){
           data_table_name + "/" + friend_token + "/" + friend_partition + "/"+ friend_row,friend_json_object)
       };
 
+      //Successfully added as friend
       message.reply(status_codes::OK);
       return;
-
     }
-  }
+  } // END OF ADDFRIEND
 
-
-
-  // UNFRIEND 
-
-
+//**************UNFRIEND OPERATION******************
   if(paths[0] == un_friend_user){
 
     if(paths.size() != 4){
@@ -378,45 +375,40 @@ void handle_put(http_request message){
       };
 
       string friend_list = get_json_object_prop(result.second, "Friends");
- 
+
       friends_list_t friends_list_val = parse_friends_list(friend_list);
 
       bool checker = false;
 
       for(int i = 0; i < friends_list_val.size(); ++i){
         if(friends_list_val[i].first == unfriend_country && friends_list_val[i].second == unfriend_full_name){
-          
           //friend found
           friend_list_val.erase(friends_list_val.begin()+i);
           checker = true;
         }
-
       }
       if(checker == false){
-        //friend doesnt exist 
+        //friend doesnt exist
         cout << "Friend Does Not Exist" << endl;
-        //output "OK" anyways
+        //return OK anyways
         message.reply(status_codes::OK);
         return;
       }
       else{
-        //NOT SURE ABOUT THIS PART YET 
+        ///////*************** NOT SURE ABOUT THIS PART YET****************
         string friend_list_new = friends_list_to_string(friends_list_val);
         value friend_json_object {build_json_value (vector<pair<string,string>>{make_pair("Friends",friend_list_new)})};
         pair<status_code,value> result_a{
           do_request(methods::PUT, basic_def_url + update_entity_auth +"/"+
             data_table_name + "/" + unfriend_token + "/" + unfriend_partition + "/"+ unfriend_row,friend_json_object)
         };
-        message.reply(status_codes::OK); 
+        //successfully un-friended
+        message.reply(status_codes::OK);
         return;
       }
-
     }
-  }
-
+  } // END OF UNFRIEND
 }
-
-
 
 /*
   Main server routine
