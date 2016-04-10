@@ -25,8 +25,6 @@
 #include "ClientUtils.h"
 #include "make_unique.h"
 
-#include "azure_keys.h"
-
 using azure::storage::cloud_storage_account;
 using azure::storage::storage_credentials;
 using azure::storage::storage_exception;
@@ -53,6 +51,8 @@ using std::string;
 using std::unordered_map;
 using std::vector;
 using std::tuple;
+using std::get
+using std::make_tuple
 
 using web::http::http_headers;
 using web::http::http_request;
@@ -319,6 +319,100 @@ void handle_post(http_request message) {
   }
 
 }
+
+/*
+  Top-level routine for processing all HTTP GET requests.
+ */
+void handle_get(http_request message) {
+  string path {uri::decode(message.relative_uri().path())};
+  cout << endl << "**** GET " << path << endl;
+  auto paths = uri::split_path(path);
+
+  if (paths.size() < 2){
+    message.reply(status_codes::BadRequest);
+    return;
+  }
+
+  string user_id {paths[1]};
+
+  if(paths[0] == read_friend_list){
+    auto isUserSignedIn = usersSignedIn.find(user_id);
+
+    if (isUserSignedIn == usersSignedIn.end()){
+      message.reply(status_codes::Forbidden);
+      return;
+    }
+    //if user signed in, get friend list
+    else{
+      string dataToken = get<0>(usersSignedIn[user_id]);
+      string dataPartition = get<1>(usersSignedIn[user_id]);
+      string dataRow = get<2>(usersSignedIn[user_id]);
+
+      pair<status_code,value> result {
+        do_request(methods::GET, basic_def_url + read_entity_auth + "/" +
+        data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow)
+      };
+
+      string friends_list = get_json_object_prop(result.second, "Friends");
+      value json_friends {build_json_object (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
+      message.reply(status_codes::OK, json_friends);
+      return;
+    }
+  }
+}
+
+/*
+  Top-level routine for processing all HTTP PUT requests.
+ */
+void handle_put(http_request message) {
+  string path {uri::decode(message.relative_uri().path())};
+  cout << endl << "**** PUT " << path << endl;
+  auto paths = uri::split_path(path);
+
+  if (paths.size() < 3){
+    message.reply(status_codes::BadRequest);
+    return;
+  }
+
+  string user_id {paths[1]};
+  string status {paths[2]};
+
+  if(paths[0] == update_status){
+    auto isUserSignedIn = usersSignedIn.find(user_id);
+
+    if (isUserSignedIn == usersSignedIn.end()){
+      message.reply(status_codes::Forbidden);
+      return;
+    }
+    // If user signed in, update status
+    else{
+      string dataToken = get<0>(usersSignedIn[user_id]);
+      string dataPartition = get<1>(usersSignedIn[user_id]);
+      string dataRow = get<2>(usersSignedIn[user_id]);
+
+      pair<status_code,value> result {
+        do_request(methods::GET, basic_def_url + read_entity_auth + "/" +
+        data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow)
+      };
+
+      value json_status {build_json_object (vector<pair<string,string>> {make_pair("Status", status)})};
+      pair<status_code,value> result2 {
+        do_request(methods::PUT, basic_def_url + update_entity_auth + "/" +
+        data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow, json_status)
+      };
+
+      string friends_list = get_json_object_prop(result.second, "Friends");
+      value json_friends {build_json_object (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
+      pair<status_code,value> result3 {
+        do_request(methods::POST, push_def_url + push_status + "/" +
+        dataPartition + "/" + dataRow + "/" + status, json_friends)
+      };
+      message.reply(status_codes::OK);
+      return;
+    }
+  }
+}
+
 /*
   Main server routine
 
