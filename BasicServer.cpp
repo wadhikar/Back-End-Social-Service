@@ -25,7 +25,6 @@
 #include "ServerUtils.h"
 #include "make_unique.h"
 
-#include "azure_keys.h"
 
 using azure::storage::cloud_storage_account;
 using azure::storage::storage_credentials;
@@ -519,7 +518,6 @@ void handle_delete(http_request message) {
  */
 int main (int argc, char const * argv[]) {
 
-  table_cache.init(storage_connection_string);
 
   http_listener listener {def_url};
   listener.support(methods::GET, &handle_get);
