@@ -397,17 +397,17 @@ void handle_put(http_request message) {
     string friend_full_name{paths[3]};
 
     //check if user is signed in
-    auto check_signed = usersSignedIn.find(paths[1]);
-    if(check_signed = usersSignedIn.end){
+    auto check_signed = usersSignedIn.find( user_id );
+    if( check_signed == usersSignedIn.end() ){
       //not signed-in
       message.reply(status_codes::Forbidden);
       return;
     }
 
     else{ //user is signed-in
-      string friend_token = {get<0>(usersSignedIn[user_id])};
-      string friend_partition = {get<1>(usersSignedIn[user_id])};
-      string friend_row = {get<2>(usersSignedIn[user_id])};
+      string friend_token = get<0>(usersSignedIn[user_id]);
+      string friend_partition = get<1>(usersSignedIn[user_id]);
+      string friend_row = get<2>(usersSignedIn[user_id]);
 
       pair<status_code,value> result {
         do_request(methods::GET, basic_def_url + read_entity_auth+"/"+
@@ -501,7 +501,7 @@ void handle_put(http_request message) {
       for(int i = 0; i < friends_list_val.size(); ++i){
         if(friends_list_val[i].first == unfriend_country && friends_list_val[i].second == unfriend_full_name){
           //friend found
-          friend_list_val.erase(friends_list_val.begin()+i);
+          friends_list_val.erase(friends_list_val.begin()+i);
           checker = true;
         }
       }
