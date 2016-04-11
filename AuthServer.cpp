@@ -16,6 +16,7 @@
 #include "TableCache.h"
 #include "make_unique.h"
 
+#include "azure_keys.h"
 
 using azure::storage::storage_exception;
 using azure::storage::cloud_table;
@@ -390,6 +391,9 @@ void handle_delete(http_request message) {
   Wait for a carriage return, then shut the server down.
  */
 int main (int argc, char const * argv[]) {
+
+  table_cache.init(storage_connection_string);
+
   cout << "AuthServer: Parsing connection string" << endl;
 
   cout << "AuthServer: Opening listener" << endl;
