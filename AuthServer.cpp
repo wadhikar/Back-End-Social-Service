@@ -391,8 +391,10 @@ void handle_delete(http_request message) {
   Wait for a carriage return, then shut the server down.
  */
 int main (int argc, char const * argv[]) {
+
+  table_cache.init(storage_connection_string);
+
   cout << "AuthServer: Parsing connection string" << endl;
-  table_cache.init (storage_connection_string);
 
   cout << "AuthServer: Opening listener" << endl;
   http_listener listener {def_url};
