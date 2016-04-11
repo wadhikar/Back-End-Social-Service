@@ -209,6 +209,7 @@ void handle_post(http_request message) {
 
       if ( status_codes::NotFound == updateData.first) {
         message.reply(status_codes::NotFound);
+        return;
       }
 
       unordered_map<string,string> updateDataJSONBody {
@@ -237,6 +238,7 @@ void handle_post(http_request message) {
 
       if ( status_codes::NotFound == user_in_data_table.first) {
         message.reply(status_codes::NotFound);
+        return;
       }
 
       // Once token has been created and user is confirmed to be in data table,
@@ -270,9 +272,11 @@ void handle_post(http_request message) {
 
       if ( passwordInRequest[0] == passwordInAuthTable->second ) {
         message.reply(status_codes::OK);
+        return;
       }
       else {
         message.reply(status_codes::NotFound);
+        return;
       }
     }
   }
@@ -284,14 +288,19 @@ void handle_post(http_request message) {
 
     if( !userFound ) {
       message.reply(status_codes::NotFound);
+      return;
     }
 
     auto isUserRemoved {usersSignedIn.erase( userid_name )};
 
     if( isUserRemoved.size() == 1 ) {
       message.reply(status_codes::OK);
+      return;
     }
   }
+  //to return bad request because of unrecognized request
+  message.reply(status_codes::BadRequest);
+  return;
 
 }
 
@@ -334,6 +343,9 @@ void handle_get(http_request message) {
       return;
     }
   }
+  //to return bad request because of unrecognized request
+  message.reply(status_codes::BadRequest);
+  return;
 }
 
 /*
@@ -378,10 +390,16 @@ void handle_put(http_request message) {
 
       string friends_list = get_json_object_prop(result.second, "Friends");
       value json_friends {build_json_value (vector<pair<string,string>> {make_pair("Friends", friends_list)})};
-      pair<status_code,value> result3 {
-        do_request(methods::POST, push_def_url + push_status + "/" +
-        dataPartition + "/" + dataRow + "/" + status, json_friends)
-      };
+
+      try {
+        pair<status_code,value> result3 {
+          do_request(methods::POST, push_def_url + push_status + "/" +
+          dataPartition + "/" + dataRow + "/" + status, json_friends)
+        };
+      } catch (const web::uri_exception& e) {
+        message.reply(status_codes::ServiceUnavailable);
+        return;
+      }
       message.reply(status_codes::OK);
       return;
     }
@@ -469,6 +487,7 @@ void handle_put(http_request message) {
     if(check_signed == usersSignedIn.end()){
       //User is not signed in
       message.reply(status_codes::Forbidden);
+      return;
     }
     else{//user signed-in
 
@@ -526,6 +545,9 @@ void handle_put(http_request message) {
       }
     }
   } // END OF UNFRIEND
+  //to return bad request because of unrecognized request
+  message.reply(status_codes::BadRequest);
+  return;
 }
 
 /*

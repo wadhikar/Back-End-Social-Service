@@ -56,6 +56,17 @@ const string get_update_token_op {"GetUpdateToken"};
 const string add_property_admin {"AddPropertyAdmin"};
 const string update_property_admin {"UpdatePropertyAdmin"};
 
+const string sign_off {"SignOff"};
+const string sign_on {"SignOn"};
+const string read_friend_list {"ReadFriendList"};
+const string update_status {"UpdateStatus"};
+const string push_status {"PushStatus"};
+const string add_friend_user{"AddFriend"};
+const string un_friend_user{"UnFriend"};
+
+const string status1{"Hello"};
+
+
 /*
   Make an HTTP request, returning the status code and any JSON value in the body
 
@@ -367,41 +378,41 @@ pair<status_code,string> get_read_token(const string& addr,  const string& useri
   but the table is left. See the comments in the code
   for the reason for this design.
  */
-SUITE(GET) {
-  class GetFixture {
-  public:
-    static constexpr const char* addr {"http://127.0.0.1:34568/"};
-    static constexpr const char* auth_addr {"http://localhost:34570/"};
-    static constexpr const char* userid {"user"};
-    static constexpr const char* user_pwd {"user"};
-    static constexpr const char* auth_table {"AuthTable"};
-    static constexpr const char* auth_table_partition {"Userid"};
-    static constexpr const char* auth_pwd_prop {"Password"};
-    static constexpr const char* table {"TestTable"};
-    static constexpr const char* partition {"Franklin,Aretha"};
-    static constexpr const char* row {"USA"};
-    static constexpr const char* property {"Song"};
-    static constexpr const char* prop_val {"RESPECT"};
-
-  public:
-    GetFixture() {
-      int make_result {create_table(addr, table)};
-      cerr << "create result " << make_result << endl;
-      if (make_result != status_codes::Created && make_result != status_codes::Accepted) {
-        throw std::exception();
-      }
-      int put_result {put_entity (addr, table, partition, row, property, prop_val)};
-      cerr << "put result " << put_result << endl;
-      if (put_result != status_codes::OK) {
-        throw std::exception();
-      }
-    }
-    ~GetFixture() {
-      int del_ent_result {delete_entity (addr, table, partition, row)};
-      if (del_ent_result != status_codes::OK) {
-        throw std::exception();
-      }
-
+// SUITE(GET) {
+//   class GetFixture {
+//   public:
+//     static constexpr const char* addr {"http://127.0.0.1:34568/"};
+//     static constexpr const char* auth_addr {"http://localhost:34570/"};
+//     static constexpr const char* userid {"user"};
+//     static constexpr const char* user_pwd {"user"};
+//     static constexpr const char* auth_table {"AuthTable"};
+//     static constexpr const char* auth_table_partition {"Userid"};
+//     static constexpr const char* auth_pwd_prop {"Password"};
+//     static constexpr const char* table {"TestTable"};
+//     static constexpr const char* partition {"Franklin,Aretha"};
+//     static constexpr const char* row {"USA"};
+//     static constexpr const char* property {"Song"};
+//     static constexpr const char* prop_val {"RESPECT"};
+//
+//   public:
+//     GetFixture() {
+//       int make_result {create_table(addr, table)};
+//       cerr << "create result " << make_result << endl;
+//       if (make_result != status_codes::Created && make_result != status_codes::Accepted) {
+//         throw std::exception();
+//       }
+//       int put_result {put_entity (addr, table, partition, row, property, prop_val)};
+//       cerr << "put result " << put_result << endl;
+//       if (put_result != status_codes::OK) {
+//         throw std::exception();
+//       }
+//     }
+//     ~GetFixture() {
+//       int del_ent_result {delete_entity (addr, table, partition, row)};
+//       if (del_ent_result != status_codes::OK) {
+//         throw std::exception();
+//       }
+//
 
     /*
       In traditional unit testing, we might delete the table after every test.
@@ -410,7 +421,7 @@ SUITE(GET) {
       creating and deleting tables are rate-limited operations. So we
       leave the table after each test but delete all its entities.
     */
-    cout << "Skipping table delete" << endl;
+    //cout << "Skipping table delete" << endl;
     /*
       int del_result {delete_table(addr, table)};
       cerr << "delete result " << del_result << endl;
@@ -418,8 +429,8 @@ SUITE(GET) {
         throw std::exception();
       }
       */
-    }
-  };
+  //   }
+  // };
 
   // /*
   //   A test of GET of a single entity
@@ -776,7 +787,7 @@ SUITE(GET) {
 //       CHECK_EQUAL(status_codes::OK, result.first);
 //     }
 // }
-
+/*
 class AuthFixture {
 public:
   static constexpr const char* addr {"http://localhost:34568/"};
@@ -787,6 +798,7 @@ public:
   static constexpr const char* auth_table_partition {"Userid"};
   static constexpr const char* auth_pwd_prop {"Password"};
   static constexpr const char* table {"DataTable"};
+  static constexpr const char* authtable {"AuthTable"};
   static constexpr const char* partition {"USA"};
   static constexpr const char* row {"Franklin,Aretha"};
   static constexpr const char* property {"Song"};
@@ -823,195 +835,407 @@ public:
     }
   }
 };
+*/
 
-SUITE(UPDATE_AUTH) {
-  TEST_FIXTURE(AuthFixture, PutAuth) {
-    pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+class BasicFixture {
+public:
+  static constexpr const char* addr {"http://localhost:34568/"};
+  static constexpr const char* auth_addr {"http://localhost:34570/"};
+  static constexpr const char* userid {"user"};
+  static constexpr const char* user_pwd {"user"};
+  static constexpr const char* auth_table {"AuthTable"};
+  static constexpr const char* auth_table_partition {"Userid"};
+  static constexpr const char* auth_pwd_prop {"Password"};
+  static constexpr const char* table {"DataTable"};
+  static constexpr const char* authtable {"AuthTable"};
 
-    cout << "Requesting token" << endl;
-    pair<status_code,string> token_res {
-      get_update_token(AuthFixture::auth_addr,
-                       AuthFixture::userid,
-                       AuthFixture::user_pwd)};
-    cout << "Token response " << token_res.first << endl;
-    CHECK_EQUAL (token_res.first, status_codes::OK);
+  static constexpr const char* row {"USA"};
+  static constexpr const char* partition {"Franklin,Aretha"};
+  static constexpr const char* row2 {"Canada"};
+  static constexpr const char* partition2 {"Trudeau,Justin"};
+  static constexpr const char* row3 {"China"};
+  static constexpr const char* partition3 {"Trump,Donald"};
 
-    pair<status_code,value> result {
-      do_request (methods::PUT,
-                  string(AuthFixture::addr)
-                  + update_entity_auth + "/"
-                  + AuthFixture::table + "/"
-                  + token_res.second + "/"
-                  + AuthFixture::partition + "/"
-                  + AuthFixture::row,
-                  value::object (vector<pair<string,value>>
-                                   {make_pair(added_prop.first,
-                                              value::string(added_prop.second))})
-                  )};
-    CHECK_EQUAL(status_codes::OK, result.first);
 
-    pair<status_code,value> ret_res {
-      do_request (methods::GET,
-                  string(AuthFixture::addr)
-                  + read_entity_admin + "/"
-                  + AuthFixture::table + "/"
-                  + AuthFixture::partition + "/"
-                  + AuthFixture::row)};
-    CHECK_EQUAL (status_codes::OK, ret_res.first);
-    value expect {
-      build_json_object (
-                         vector<pair<string,string>> {
-                           added_prop,
-                           make_pair(string(AuthFixture::property),
-                                     string(AuthFixture::prop_val))}
-                         )};
-
-    cout << AuthFixture::property << endl;
-    compare_json_values (expect, ret_res.second);
+public:
+  BasicFixture() {
+    int make_result {create_table(addr, table)};
+    cerr << "create result " << make_result << endl;
+    if (make_result != status_codes::Created && make_result != status_codes::Accepted) {
+      throw std::exception();
+    }
+    int put_result {put_entity (addr, table, partition, row, property, prop_val)};
+    cerr << "put result " << put_result << endl;
+    if (put_result != status_codes::OK) {
+      throw std::exception();
+    }
+    // Ensure userid and password in system
+    int user_result {put_entity (addr,
+                                 auth_table,
+                                 auth_table_partition,
+                                 userid,
+                                 auth_pwd_prop,
+                                 user_pwd)};
+    cerr << "user auth table insertion result " << user_result << endl;
+    if (user_result != status_codes::OK)
+      throw std::exception();
   }
 
-  // Tests that should end with status_codes::BadRequest (400)
-  TEST_FIXTURE(AuthFixture, PutAuth_BadReq) {
-    pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+  ~BasicFixture() {
+    int del_ent_result {delete_entity (addr, table, partition, row)};
+    if (del_ent_result != status_codes::OK) {
+      throw std::exception();
+    }
+  }
+};
 
-    cout << "Requesting token" << endl;
-    pair<status_code,string> token_res {
-      get_update_token(AuthFixture::auth_addr,
-                       AuthFixture::userid,
-                       AuthFixture::user_pwd)};
-    cout << "Token response " << token_res.first << endl;
-    CHECK_EQUAL (token_res.first, status_codes::OK);
 
-    // No table name
-    // Ends in status_codes::NotFound (404) so commenting this out for this test
-    // pair<status_code,value> result {
-    //   do_request (methods::PUT,
-    //               string(AuthFixture::addr)
-    //               + update_entity_auth + "/"
-    //               + token_res.second + "/"
-    //               + AuthFixture::partition + "/"
-    //               + AuthFixture::row,
-    //               value::object (vector<pair<string,value>>
-    //                                {make_pair(added_prop.first,
-    //                                           value::string(added_prop.second))})
-    //               )};
-    // CHECK_EQUAL(status_codes::BadRequest, result.first);
-
-    // No token
+SUITE(POST){
+  //SignOn
+  TEST_FIXTURE(BasicFixture, SignOn){
+    cout << "SignOn" << endl;
     pair<status_code,value> result {
-
-      do_request (methods::PUT,
-                string(AuthFixture::addr)
-                + update_entity_auth + "/"
-                + AuthFixture::table + "/"
-                + AuthFixture::partition + "/"
-                + AuthFixture::row,
-                value::object (vector<pair<string,value>>
-                                 {make_pair(added_prop.first,
-                                            value::string(added_prop.second))}))
-      };
-
-    CHECK_EQUAL(status_codes::BadRequest, result.first);
-
-    // No partition
-    result = do_request (methods::PUT,
-                string(AuthFixture::addr)
-                + update_entity_auth + "/"
-                + AuthFixture::table + "/"
-                + token_res.second + "/"
-                + AuthFixture::row,
-                value::object (vector<pair<string,value>>
-                                 {make_pair(added_prop.first,
-                                            value::string(added_prop.second))}));
-
-    CHECK_EQUAL(status_codes::BadRequest, result.first);
-
-    // No row
-    result = do_request (methods::PUT,
-                string(AuthFixture::addr)
-                + update_entity_auth + "/"
-                + AuthFixture::table + "/"
-                + token_res.second + "/"
-                + AuthFixture::partition + "/",
-                value::object (vector<pair<string,value>>
-                                 {make_pair(added_prop.first,
-                                            value::string(added_prop.second))}));
-
-    CHECK_EQUAL(status_codes::BadRequest, result.first);
-
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_on + "/"
+                  + userid )};
+    CHECK_EQUAL (result.first, status_codes::OK);
+    //wrong user id
+    pair<status_code,value> notFoundResult {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_on + "/"
+                  + "wrong" )};
+    CHECK_EQUAL (notFoundResult.first, status_codes::NotFound);
+  }
+  //SignOff
+  TEST_FIXTURE(BasicFixture, SignOff){
+    cout << "SignOff" << endl;
+    pair<status_code,value> result {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_off + "/"
+                  + userid )};
+    CHECK_EQUAL (result.first, status_codes::OK);
+    //wrong user id
+    pair<status_code,value> notFoundResult {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_off + "/"
+                  + "wrongUserid" )};
+    CHECK_EQUAL (notFoundResult.first, status_codes::NotFound);
   }
 
-  // Tests that should end with status_codes::Forbidden (403)
-  TEST_FIXTURE(AuthFixture, PutAuth_Forbidden) {
-    pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
-
-    cout << "Requesting READ-ONLY token" << endl;
-    pair<status_code,string> token_res {
-      get_read_token(AuthFixture::auth_addr,
-                       AuthFixture::userid,
-                       AuthFixture::user_pwd)};
-    cout << "Token response " << token_res.first << endl;
-    CHECK_EQUAL (token_res.first, status_codes::OK);
-
+  // Push Status
+  TEST_FIXTURE(BasicFixture, PushStatus){
+    cout << "SignOff" << endl;
     pair<status_code,value> result {
-      do_request (methods::PUT,
-                  string(AuthFixture::addr)
-                  + update_entity_auth + "/"
-                  + AuthFixture::table + "/"
-                  + token_res.second + "/"
-                  + AuthFixture::partition + "/"
-                  + AuthFixture::row,
-                  value::object (vector<pair<string,value>>
-                                   {make_pair(added_prop.first,
-                                              value::string(added_prop.second))})
-                  )};
-    CHECK_EQUAL(status_codes::Forbidden, result.first);
-
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + push_status + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/"
+                  + status1 )};
+    CHECK_EQUAL (result.first, status_codes::OK);
+    //wrong user id
+    pair<status_code,value> PushStatus {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + push_status + "/"
+                  + "wrongUserid" )};
+    CHECK_EQUAL (notFoundResult.first, status_codes::NotFound);
   }
 
-  // Tests that should end with status_codes::NotFound (404)
-  TEST_FIXTURE(AuthFixture, PutAuth_NotFound) {
-    pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+SUITE(PUT) {
 
-    cout << "Requesting token" << endl;
-    pair<status_code,string> token_res {
-      get_update_token(AuthFixture::auth_addr,
-                       AuthFixture::userid,
-                       AuthFixture::user_pwd)};
-    cout << "Token response " << token_res.first << endl;
-    CHECK_EQUAL (token_res.first, status_codes::OK);
-
-    // Invalid table name
+  //Addfriend
+  TEST_FIXTURE(BasicFixture, AddFriend){
     pair<status_code,value> result {
-      do_request (methods::PUT,
-                  string(AuthFixture::addr)
-                  + update_entity_auth + "/"
-                  + "WrongTable" + "/"
-                  + token_res.second + "/"
-                  + AuthFixture::partition + "/"
-                  + AuthFixture::row,
-                  value::object (vector<pair<string,value>>
-                                   {make_pair(added_prop.first,
-                                              value::string(added_prop.second))})
-                  )};
-    CHECK_EQUAL(status_codes::NotFound, result.first);
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + add_friend_user + "/"
+                      + BasicFixture::userid + "/"
+                      + BasicFixture::partition2 + "/"
+                      + BasicFixture::row2 + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+    //Forbidden, wrong partition. having wrong row would have same result
+    //so test of row in unnecessary
+    pair<status_code,value> forbiddenResult{
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + add_friend_user + "/"
+                      + "wrongUserid" + "/"
+                      + BasicFixture::partition2 + "/"
+                      + BasicFixture::row2 + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
+  }
+  //UnFriend
+  TEST_FIXTURE(BasicFixture, UnFriend){
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + un_friend_user + "/"
+                      + BasicFixture::userid + "/"
+                      + BasicFixture::partition + "/"
+                      + BasicFixture::row + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+    //Forbidden, wrong partition. having wrong row would have same result
+    //so test of row in unnecessary
+    pair<status_code,value> forbiddenResult {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + un_friend_user + "/"
+                      + BasicFixture::userid + "/"
+                      + "WrongPartition" + "/"
+                      + BasicFixture::row + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
+  }
+  //Update Status
+  TEST_FIXTURE(BasicFixture, UpdateStatus){
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + update_status + "/"
+                      + BasicFixture::userid + "/"
+                      + status1)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+    //Forbidden, wrong partition. having wrong row would have same result
+    //so test of row in unnecessary
+    pair<status_code,value> forbiddenResult {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + un_friend_user + "/"
+                      + "InvalidUser" + "/"
+                      + status1)};
+    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
 
-    // Invalid partition and row
-    // Results in status_codes::Forbidden (403) b/c partition/row don't correspond
-    // to token partition/row so commenting this out
-    // result = do_request (methods::PUT,
-    //               string(AuthFixture::addr)
-    //               + update_entity_auth + "/"
-    //               + AuthFixture::table + "/"
-    //               + token_res.second + "/"
-    //               + "WrongPartition" + "/"
-    //               + "WrongRow",
-    //               value::object (vector<pair<string,value>>
-    //                                {make_pair(added_prop.first,
-    //                                           value::string(added_prop.second))}));
-    // CHECK_EQUAL(status_codes::NotFound, result.first);
-
+    // Service unavailable test for when push server is down
+    // pair<status_code,value> serviceUnavailableResult {
+    //       do_request (methods::PUT,
+    //                   string(BasicFixture::addr)
+    //                   + un_friend_user + "/"
+    //                   + BasicFixture::userid + "/"
+    //                   + status1)};
+    // CHECK_EQUAL (serviceUnavailableResult.first, status_codes::ServiceUnavailable);
 
   }
 }
+
+SUITE(GET) {
+  //ReadFriendList
+  TEST_FIXTURE(BasicFixture, ReadFriendList){
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + read_friend_list + "/"
+                      + BasicFixture::userid)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+
+  TEST_FIXTURE(BasicFixture, UpdateStatus){
+    pair<status_code,value> forbiddenResult {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + read_friend_list + "/"
+                      + "WrongUserid")};
+    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
 }
+
+
+}
+
+// SUITE(UPDATE_AUTH) {
+//
+//
+//   TEST_FIXTURE(AuthFixture, PutAuth) {
+//     pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+//
+//     cout << "Requesting token" << endl;
+//     pair<status_code,string> token_res {
+//       get_update_token(AuthFixture::auth_addr,
+//                        AuthFixture::userid,
+//                        AuthFixture::user_pwd)};
+//     cout << "Token response " << token_res.first << endl;
+//     CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//     pair<status_code,value> result {
+//       do_request (methods::PUT,
+//                   string(AuthFixture::addr)
+//                   + update_entity_auth + "/"
+//                   + AuthFixture::table + "/"
+//                   + token_res.second + "/"
+//                   + AuthFixture::partition + "/"
+//                   + AuthFixture::row,
+//                   value::object (vector<pair<string,value>>
+//                                    {make_pair(added_prop.first,
+//                                               value::string(added_prop.second))})
+//                   )};
+//     CHECK_EQUAL(status_codes::OK, result.first);
+//
+//     pair<status_code,value> ret_res {
+//       do_request (methods::GET,
+//                   string(AuthFixture::addr)
+//                   + read_entity_admin + "/"
+//                   + AuthFixture::table + "/"
+//                   + AuthFixture::partition + "/"
+//                   + AuthFixture::row)};
+//     CHECK_EQUAL (status_codes::OK, ret_res.first);
+//     value expect {
+//       build_json_object (
+//                          vector<pair<string,string>> {
+//                            added_prop,
+//                            make_pair(string(AuthFixture::property),
+//                                      string(AuthFixture::prop_val))}
+//                          )};
+//
+//     cout << AuthFixture::property << endl;
+//     compare_json_values (expect, ret_res.second);
+//   }
+//
+//   // Tests that should end with status_codes::BadRequest (400)
+//   TEST_FIXTURE(AuthFixture, PutAuth_BadReq) {
+//     pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+//
+//     cout << "Requesting token" << endl;
+//     pair<status_code,string> token_res {
+//       get_update_token(AuthFixture::auth_addr,
+//                        AuthFixture::userid,
+//                        AuthFixture::user_pwd)};
+//     cout << "Token response " << token_res.first << endl;
+//     CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//     // No table name
+//     // Ends in status_codes::NotFound (404) so commenting this out for this test
+//     // pair<status_code,value> result {
+//     //   do_request (methods::PUT,
+//     //               string(AuthFixture::addr)
+//     //               + update_entity_auth + "/"
+//     //               + token_res.second + "/"
+//     //               + AuthFixture::partition + "/"
+//     //               + AuthFixture::row,
+//     //               value::object (vector<pair<string,value>>
+//     //                                {make_pair(added_prop.first,
+//     //                                           value::string(added_prop.second))})
+//     //               )};
+//     // CHECK_EQUAL(status_codes::BadRequest, result.first);
+//
+//     // No token
+//     pair<status_code,value> result {
+//
+//       do_request (methods::PUT,
+//                 string(AuthFixture::addr)
+//                 + update_entity_auth + "/"
+//                 + AuthFixture::table + "/"
+//                 + AuthFixture::partition + "/"
+//                 + AuthFixture::row,
+//                 value::object (vector<pair<string,value>>
+//                                  {make_pair(added_prop.first,
+//                                             value::string(added_prop.second))}))
+//       };
+//
+//     CHECK_EQUAL(status_codes::BadRequest, result.first);
+//
+//     // No partition
+//     result = do_request (methods::PUT,
+//                 string(AuthFixture::addr)
+//                 + update_entity_auth + "/"
+//                 + AuthFixture::table + "/"
+//                 + token_res.second + "/"
+//                 + AuthFixture::row,
+//                 value::object (vector<pair<string,value>>
+//                                  {make_pair(added_prop.first,
+//                                             value::string(added_prop.second))}));
+//
+//     CHECK_EQUAL(status_codes::BadRequest, result.first);
+//
+//     // No row
+//     result = do_request (methods::PUT,
+//                 string(AuthFixture::addr)
+//                 + update_entity_auth + "/"
+//                 + AuthFixture::table + "/"
+//                 + token_res.second + "/"
+//                 + AuthFixture::partition + "/",
+//                 value::object (vector<pair<string,value>>
+//                                  {make_pair(added_prop.first,
+//                                             value::string(added_prop.second))}));
+//
+//     CHECK_EQUAL(status_codes::BadRequest, result.first);
+//
+//   }
+//
+//   // Tests that should end with status_codes::Forbidden (403)
+//   TEST_FIXTURE(AuthFixture, PutAuth_Forbidden) {
+//     pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+//
+//     cout << "Requesting READ-ONLY token" << endl;
+//     pair<status_code,string> token_res {
+//       get_read_token(AuthFixture::auth_addr,
+//                        AuthFixture::userid,
+//                        AuthFixture::user_pwd)};
+//     cout << "Token response " << token_res.first << endl;
+//     CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//     pair<status_code,value> result {
+//       do_request (methods::PUT,
+//                   string(AuthFixture::addr)
+//                   + update_entity_auth + "/"
+//                   + AuthFixture::table + "/"
+//                   + token_res.second + "/"
+//                   + AuthFixture::partition + "/"
+//                   + AuthFixture::row,
+//                   value::object (vector<pair<string,value>>
+//                                    {make_pair(added_prop.first,
+//                                               value::string(added_prop.second))})
+//                   )};
+//     CHECK_EQUAL(status_codes::Forbidden, result.first);
+//
+//   }
+//
+//   // Tests that should end with status_codes::NotFound (404)
+//   TEST_FIXTURE(AuthFixture, PutAuth_NotFound) {
+//     pair<string,string> added_prop {make_pair(string("born"),string("1942"))};
+//
+//     cout << "Requesting token" << endl;
+//     pair<status_code,string> token_res {
+//       get_update_token(AuthFixture::auth_addr,
+//                        AuthFixture::userid,
+//                        AuthFixture::user_pwd)};
+//     cout << "Token response " << token_res.first << endl;
+//     CHECK_EQUAL (token_res.first, status_codes::OK);
+//
+//     // Invalid table name
+//     pair<status_code,value> result {
+//       do_request (methods::PUT,
+//                   string(AuthFixture::addr)
+//                   + update_entity_auth + "/"
+//                   + "WrongTable" + "/"
+//                   + token_res.second + "/"
+//                   + AuthFixture::partition + "/"
+//                   + AuthFixture::row,
+//                   value::object (vector<pair<string,value>>
+//                                    {make_pair(added_prop.first,
+//                                               value::string(added_prop.second))})
+//                   )};
+//     CHECK_EQUAL(status_codes::NotFound, result.first);
+//
+//     // Invalid partition and row
+//     // Results in status_codes::Forbidden (403) b/c partition/row don't correspond
+//     // to token partition/row so commenting this out
+//     // result = do_request (methods::PUT,
+//     //               string(AuthFixture::addr)
+//     //               + update_entity_auth + "/"
+//     //               + AuthFixture::table + "/"
+//     //               + token_res.second + "/"
+//     //               + "WrongPartition" + "/"
+//     //               + "WrongRow",
+//     //               value::object (vector<pair<string,value>>
+//     //                                {make_pair(added_prop.first,
+//     //                                           value::string(added_prop.second))}));
+//     // CHECK_EQUAL(status_codes::NotFound, result.first);
+//
+//
+//   }
+//}
