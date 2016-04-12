@@ -1337,7 +1337,9 @@ SUITE(PUT) {
 }
 
 SUITE(GET) {
-  //ReadFriendList
+  // ReadFriendList
+  // To check if ReadFriendList returns the correct Friends list, our group uses
+  // shell scripts to print Friends from DataTable and do a manual check
   TEST_FIXTURE(BasicFixture, ReadFriendList){
     cout << "PushStatusLarge" << endl;
     pair<status_code,value> result {
