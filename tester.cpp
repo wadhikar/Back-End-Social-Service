@@ -67,70 +67,19 @@ const string add_friend_user{"AddFriend"};
 const string un_friend_user{"UnFriend"};
 
 const string statusNormal {"Hello"};
-const string statusLarge {"ThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatus"}
+const string statusLarge {"ThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatus"};
 const string invalidValue {"invalidValue"};
 
 const bool falseBool {false};
 const bool trueBool {true};
 
+const string auth_def_url = "http://localhost:34570/";
+const string basic_def_url = "http://localhost:34568/";
+const string push_def_url = "http://localhost:34574/";
+const string user_def_url= "http://localhost:34572/";
+
 
 vector<pair<string,value>> bodyForTesting {};
-
-
-/*
-  Make an HTTP request, returning the status code and any JSON value in the body
-
-  method: member of web::http::methods
-  uri_string: uri of the request
-  req_body: [optional] a json::value to be passed as the message body
-
-  If the response has a body with Content-Type: application/json,
-  the second part of the result is the json::value of the body.
-  If the response does not have that Content-Type, the second part
-  of the result is simply json::value {}.
-
-  You're welcome to read this code but bear in mind: It's the single
-  trickiest part of the sample code. You can just call it without
-  attending to its internals, if you prefer.
- */
-
-// Version with explicit third argument
-pair<status_code,value> do_request (const method& http_method, const string& uri_string, const value& req_body) {
-  http_request request {http_method};
-  if (req_body != value {}) {
-    http_headers& headers (request.headers());
-    headers.add("Content-Type", "application/json");
-    request.set_body(req_body);
-  }
-
-  status_code code;
-  value resp_body;
-  http_client client {uri_string};
-  client.request (request)
-    .then([&code](http_response response)
-          {
-            code = response.status_code();
-            const http_headers& headers {response.headers()};
-            auto content_type (headers.find("Content-Type"));
-            if (content_type == headers.end() ||
-                content_type->second != "application/json")
-              return pplx::task<value> ([] { return value {};});
-            else
-              return response.extract_json();
-          })
-    .then([&resp_body](value v) -> void
-          {
-            resp_body = v;
-            return;
-          })
-    .wait();
-  return make_pair(code, resp_body);
-}
-
-// Version that defaults third argument
-pair<status_code,value> do_request (const method& http_method, const string& uri_string) {
-  return do_request (http_method, uri_string, value {});
-}
 
 /*
   Utility to create a table
@@ -316,7 +265,7 @@ int put_entity(const string& addr, const string& table, const string& partition,
               const vector<pair<string,value>>& props) {
   pair<status_code,value> result {
     do_request (methods::PUT,
-               addr + "UpdateEntity/" + table + "/" + partition + "/" + row,
+               addr + update_entity_admin + "/" + table + "/" + partition + "/" + row,
                value::object (props))};
   return result.first;
 }
@@ -873,6 +822,7 @@ public:
   static constexpr const char* partition3 {"Yung,Soo"};
 
 
+
 public:
   BasicFixture() {
     int make_result {create_table(addr, table)};
@@ -881,11 +831,14 @@ public:
       throw std::exception();
     }
 
-    bodyForTesting.push_back( make_pair( BasicFixture::prop_friends, value prop_val_friends {} ) );
-    bodyForTesting.push_back( make_pair( BasicFixture::prop_status, value prop_val_status {} ) );
-    bodyForTesting.push_back( make_pair( BasicFixture::prop_updates, value prop_val_updates {} ) );
+    value prop_val_friends {};
+    value prop_val_status {};
+    value prop_val_updates {};
+    bodyForTesting.push_back(make_pair( string(BasicFixture::prop_friends), prop_val_friends ));
+    bodyForTesting.push_back(make_pair( string(BasicFixture::prop_status), prop_val_status ));
+    bodyForTesting.push_back(make_pair( string(BasicFixture::prop_updates), prop_val_updates ));
 
-    int put_result {put_entity (addr, table, partition, row, bodyForTesting)};
+    int put_result {put_entity (string(addr), string(table), string(partition), string(row), bodyForTesting)};
     cerr << "put result " << put_result << endl;
     if (put_result != status_codes::OK) {
       throw std::exception();
@@ -899,6 +852,10 @@ public:
     }
   }
 };
+
+// Tests for the operations involving large amounts of preexisting data were done
+// using curl commands and shell scripts that added all of the friends at once
+
 
 
 SUITE(POST){
@@ -914,12 +871,13 @@ SUITE(POST){
     cout << "SignOnFirstRightPass" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  user_def_url
                   + sign_on + "/"
                   + userid,
-                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, user_pwd ))
+                  build_json_value( make_pair( string(BasicFixture::auth_pwd_prop), string(user_pwd) ))
                   )};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "SignOn returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 
   // Wrong password on first sign on in same session
@@ -927,12 +885,13 @@ SUITE(POST){
     cout << "SignOnFirstWrongPass" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  user_def_url
                   + sign_on + "/"
-                  + userid ),
-                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, invalidValue ))
-                  };
-    CHECK_EQUAL (result.first, status_codes::NotFound);
+                  + userid,
+                  build_json_value( make_pair( string(BasicFixture::auth_pwd_prop), invalidValue ))
+                  )};
+    cout << "SignOn returned status_code: " << result.first << endl;
+    CHECK_EQUAL ( status_codes::NotFound, result.first );
   }
 
   // Right password on second sign on in same session
@@ -940,12 +899,13 @@ SUITE(POST){
     cout << "SignOnSecondRightPass" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  user_def_url
                   + sign_on + "/"
-                  + userid ),
-                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, user_pwd ))
-                  };
-    CHECK_EQUAL (result.first, status_codes::NotFound);
+                  + userid,
+                  build_json_value( make_pair( string(BasicFixture::auth_pwd_prop), string(user_pwd) ))
+                  )};
+    cout << "SignOn returned status_code: " << result.first << endl;
+    CHECK_EQUAL ( status_codes::OK, result.first );
   }
 
   // Wrong password on second sign on in same session
@@ -953,37 +913,40 @@ SUITE(POST){
     cout << "SignOnSecondWrongPass" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  user_def_url
                   + sign_on + "/"
-                  + userid ),
-                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, invalidValue ))
-                  };
-    CHECK_EQUAL (result.first, status_codes::NotFound);
+                  + userid,
+                  build_json_value( make_pair( string(BasicFixture::auth_pwd_prop), invalidValue ))
+                  )};
+    cout << "SignOn returned status_code: " << result.first << endl;
+    CHECK_EQUAL ( status_codes::NotFound, result.first );
   }
 
-  // SignOff
-  // SignOff with active user session
-  TEST_FIXTURE(BasicFixture, SignOffActive) {
-    cout << "SignOffActive" << endl;
-    pair<status_code,value> result {
-      do_request (methods::POST,
-                  string(BasicFixture::addr)
-                  + sign_off + "/"
-                  + userid )};
-    CHECK_EQUAL (result.first, status_codes::OK);
-  }
-
-
-  // Inactive user AKA a nonexisting user
-  TEST_FIXTURE(BasicFixture, SignOffInactive) {
-    cout << "SignOffInactive" << endl;
-    pair<status_code,value> result {
-      do_request (methods::POST,
-                  string(BasicFixture::addr)
-                  + sign_off + "/"
-                  + invalidValue )};
-    CHECK_EQUAL (result.first, status_codes::NotFound);
-  }
+  // // SignOff
+  // // SignOff with active user session
+  // TEST_FIXTURE(BasicFixture, SignOffActive) {
+  //   cout << "SignOffActive" << endl;
+  //   pair<status_code,value> result {
+  //     do_request (methods::POST,
+  //                 user_def_url
+  //                 + sign_off + "/"
+  //                 + userid )};
+  //   cout << "SignOff returned status_code: " << result.first << endl;
+  //   CHECK_EQUAL (status_codes::OK, result.first);
+  // }
+  //
+  //
+  // // Inactive user AKA a nonexisting user
+  // TEST_FIXTURE(BasicFixture, SignOffInactive) {
+  //   cout << "SignOffInactive" << endl;
+  //   pair<status_code,value> result {
+  //     do_request (methods::POST,
+  //                 user_def_url
+  //                 + sign_off + "/"
+  //                 + invalidValue )};
+  //   cout << "SignOff returned status_code: " << result.first << endl;
+  //   CHECK_EQUAL (status_codes::NotFound, result.first);
+  // }
 
   // Push Status
   // For checking if status was pushed to friends, our group used shell scripts
@@ -993,12 +956,13 @@ SUITE(POST){
     cout << "PushStatusEmpty" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  push_def_url
                   + push_status + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row) + "/"
                   + statusNormal )};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "PushStatus returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 
   // Do PushStatus on a normal sized updates property
@@ -1006,12 +970,13 @@ SUITE(POST){
     cout << "PushStatusNormal" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  push_def_url
                   + push_status + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row) + "/"
                   + statusNormal )};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "PushStatus returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 
   // Do PushStatus on a large updates property
@@ -1019,12 +984,13 @@ SUITE(POST){
     cout << "PushStatusLarge" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
-                  string(BasicFixture::addr)
+                  push_def_url
                   + push_status + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row) + "/"
                   + statusNormal )};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "PushStatus returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 }
 
@@ -1036,23 +1002,23 @@ SUITE(PUT) {
     cout << "AddFriendNormal" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + add_friend_user + "/"
-                      + BasicFixture::userid + "/"
-                      + BasicFixture::partition2 + "/"
-                      + BasicFixture::row2 + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid) + "/"
+                      + string(BasicFixture::row2) + "/"
+                      + string(BasicFixture::partition2))};
+    cout << "AddFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
 
     pair<status_code,value> resultAdd {
       do_request (methods::GET,
-                  string(BasicFixture::addr)
+                  basic_def_url
                   + read_entity_admin + "/"
-                  + BasicFixture::addr + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/")
+                  + string(BasicFixture::table) + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row))
     };
-    CHECK_EQUAL ( resultAdd.first, status_codes::OK );
+    CHECK_EQUAL (status_codes::OK, resultAdd.first);
 
     string resultAddFriendsList {
       get_json_object_prop( resultAdd.second, BasicFixture::prop_friends )
@@ -1065,7 +1031,7 @@ SUITE(PUT) {
     bool friendFound {false};
 
     for ( auto it = parsedFriendsList.begin(); it != parsedFriendsList.end(); ++it ) {
-      if ( it->second == BasicFixture::partition2  ) {
+      if ( it->second == string(BasicFixture::partition2)  ) {
         friendFound = true;
         break;
       }
@@ -1078,23 +1044,23 @@ SUITE(PUT) {
     cout << "AddFriendEmpty" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + add_friend_user + "/"
-                      + BasicFixture::userid + "/"
-                      + BasicFixture::partition2 + "/"
-                      + BasicFixture::row2 + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid) + "/"
+                      + string(BasicFixture::row2) + "/"
+                      + string(BasicFixture::partition2))};
+    cout << "AddFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
 
     pair<status_code,value> resultAdd {
       do_request (methods::GET,
-                  string(BasicFixture::addr)
+                  basic_def_url
                   + read_entity_admin + "/"
-                  + BasicFixture::addr + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/")
+                  + string(BasicFixture::table) + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row))
     };
-    CHECK_EQUAL ( resultAdd.first, status_codes::OK );
+    CHECK_EQUAL (status_codes::OK, resultAdd.first);
 
     string resultAddFriendsList {
       get_json_object_prop( resultAdd.second, BasicFixture::prop_friends )
@@ -1107,7 +1073,7 @@ SUITE(PUT) {
     bool friendFound {false};
 
     for ( auto it = parsedFriendsList.begin(); it != parsedFriendsList.end(); ++it ) {
-      if ( it->second == BasicFixture::partition2  ) {
+      if ( it->second == string(BasicFixture::partition2)  ) {
         friendFound = true;
         break;
       }
@@ -1120,23 +1086,23 @@ SUITE(PUT) {
     cout << "AddFriendEmpty" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + add_friend_user + "/"
-                      + BasicFixture::userid + "/"
-                      + BasicFixture::partition2 + "/"
-                      + BasicFixture::row2 + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid) + "/"
+                      + string(BasicFixture::row2) + "/"
+                      + string(BasicFixture::partition2))};
+    cout << "AddFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
 
     pair<status_code,value> resultAdd {
       do_request (methods::GET,
-                  string(BasicFixture::addr)
+                  basic_def_url
                   + read_entity_admin + "/"
-                  + BasicFixture::addr + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/")
+                  + string(BasicFixture::table) + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row))
     };
-    CHECK_EQUAL ( resultAdd.first, status_codes::OK );
+    CHECK_EQUAL (status_codes::OK, resultAdd.first);
 
     string resultAddFriendsList {
       get_json_object_prop( resultAdd.second, BasicFixture::prop_friends )
@@ -1149,7 +1115,7 @@ SUITE(PUT) {
     bool friendFound {false};
 
     for ( auto it = parsedFriendsList.begin(); it != parsedFriendsList.end(); ++it ) {
-      if ( it->second == BasicFixture::partition2  ) {
+      if ( it->second == string(BasicFixture::partition2)  ) {
         friendFound = true;
         break;
       }
@@ -1162,13 +1128,13 @@ SUITE(PUT) {
       cout << "AddFriendForbidden" << endl;
     pair<status_code,value> result{
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + add_friend_user + "/"
                       + invalidValue + "/"
-                      + BasicFixture::partition2 + "/"
-                      + BasicFixture::row2 + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::Forbidden);
+                      + string(BasicFixture::row2) + "/"
+                      + string(BasicFixture::partition2))};
+    cout << "AddFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::Forbidden, result.first);
   }
 
   // UnFriend returns status_code::OK even if friend was not in Friends initially
@@ -1178,13 +1144,13 @@ SUITE(PUT) {
     cout << "UnFriendEmpty" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + un_friend_user + "/"
-                      + BasicFixture::userid + "/"
-                      + BasicFixture::partition + "/"
-                      + BasicFixture::row + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid) + "/"
+                      + string(BasicFixture::partition) + "/"
+                      + string(BasicFixture::row) )};
+    cout << "UnFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 
   // UnFriend on a normal sized Friends list
@@ -1192,13 +1158,13 @@ SUITE(PUT) {
     cout << "UnFriendNormal" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + un_friend_user + "/"
-                      + BasicFixture::userid + "/"
-                      + BasicFixture::partition + "/"
-                      + BasicFixture::row + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid) + "/"
+                      + string(BasicFixture::partition) + "/"
+                      + string(BasicFixture::row))};
+    cout << "UnFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 
   // UnFriend on a large Friends list
@@ -1206,27 +1172,27 @@ SUITE(PUT) {
     cout << "UnFriendLarge" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + un_friend_user + "/"
-                      + BasicFixture::userid + "/"
-                      + BasicFixture::partition + "/"
-                      + BasicFixture::row + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid) + "/"
+                      + string(BasicFixture::partition) + "/"
+                      + string(BasicFixture::row))};
+    cout << "UnFriend returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 
   //Forbidden UnFriend with an inactive user aka incorrect user
-  TEST_FIXTURE(BasicFixture, UnFriendLarge) {
-    cout << "UnFriendLarge" << endl;
+  TEST_FIXTURE(BasicFixture, UnFriendForbidden) {
+    cout << "UnFriendForbidden" << endl;
     pair<status_code,value> forbiddenResult {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + un_friend_user + "/"
                       + invalidValue + "/"
-                      + BasicFixture::partition + "/"
-                      + BasicFixture::row + "/"
-                      + BasicFixture::row)};
-    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
+                      + string(BasicFixture::partition) + "/"
+                      + string(BasicFixture::row))};
+    cout << "UnFriend returned status_code: " << forbiddenResult.first << endl;
+    CHECK_EQUAL (status_codes::Forbidden, forbiddenResult.first);
   }
 
   // Update Status
@@ -1235,26 +1201,28 @@ SUITE(PUT) {
     cout << "UpdateStatusEmpty" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + update_status + "/"
-                      + BasicFixture::userid + "/"
+                      + string(BasicFixture::userid) + "/"
                       + "")};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "UpdateStatus returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::BadRequest, result.first);
 
-    pair<status_code,value> resultUpdateStatus {
-      do_request (methods::GET,
-                  string(BasicFixture::addr)
-                  + read_entity_admin + "/"
-                  + BasicFixture::addr + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/")
-    };
-    CHECK_EQUAL ( resultUpdateStatus.first, status_codes::OK );
+    // Cannot check if status has been b/c it is a BadRequest
+    // pair<status_code,value> resultUpdateStatus {
+    //   do_request (methods::GET,
+    //               basic_def_url
+    //               + read_entity_admin + "/"
+    //               + string(BasicFixture::table) + "/"
+    //               + string(BasicFixture::partition) + "/"
+    //               + string(BasicFixture::row))
+    // };
+    // CHECK_EQUAL ( status_codes::OK, resultUpdateStatus.first );
 
-    string updatedStatus {
-      get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
-    };
-    CHECK_EQUAL( "", updatedStatus );
+    // string updatedStatus {
+    //   get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
+    // };
+    // CHECK_EQUAL( "", updatedStatus );
 
   }
 
@@ -1263,21 +1231,22 @@ SUITE(PUT) {
     cout << "UpdateStatusNormal" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + update_status + "/"
-                      + BasicFixture::userid + "/"
+                      + string(BasicFixture::userid) + "/"
                       + statusNormal)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "UpdateStatus returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
 
     pair<status_code,value> resultUpdateStatus {
       do_request (methods::GET,
-                  string(BasicFixture::addr)
+                  basic_def_url
                   + read_entity_admin + "/"
-                  + BasicFixture::addr + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/")
+                  + string(BasicFixture::table) + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row))
     };
-    CHECK_EQUAL ( resultUpdateStatus.first, status_codes::OK );
+    CHECK_EQUAL ( status_codes::OK, resultUpdateStatus.first );
 
     string updatedStatus {
       get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
@@ -1290,21 +1259,22 @@ SUITE(PUT) {
     cout << "UpdateStatusLarge" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
+                      user_def_url
                       + update_status + "/"
-                      + BasicFixture::userid + "/"
+                      + string(BasicFixture::userid) + "/"
                       + statusLarge)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+    cout << "UpdateStatus returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
 
     pair<status_code,value> resultUpdateStatus {
       do_request (methods::GET,
-                  string(BasicFixture::addr)
+                  basic_def_url
                   + read_entity_admin + "/"
-                  + BasicFixture::addr + "/"
-                  + BasicFixture::partition + "/"
-                  + BasicFixture::row + "/")
+                  + string(BasicFixture::table) + "/"
+                  + string(BasicFixture::partition) + "/"
+                  + string(BasicFixture::row))
     };
-    CHECK_EQUAL ( resultUpdateStatus.first, status_codes::OK );
+    CHECK_EQUAL ( status_codes::OK, resultUpdateStatus.first );
 
     string updatedStatus {
       get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
@@ -1313,41 +1283,33 @@ SUITE(PUT) {
   }
 
   // Forbidden status code with inactive user aka incorrect user
-  TEST_FIXTURE(BasicFixture, UpdateStatusLarge) {
-    cout << "UpdateStatusLarge" << endl;
+  TEST_FIXTURE(BasicFixture, UpdateStatusForbidden) {
+    cout << "UpdateStatusForbidden" << endl;
     pair<status_code,value> forbiddenResult {
           do_request (methods::PUT,
-                      string(BasicFixture::addr)
-                      + un_friend_user + "/"
+                      user_def_url
+                      + update_status + "/"
                       + invalidValue + "/"
                       + statusNormal)};
-    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
-  }
-
-    // Service unavailable test for when push server is down
-    // pair<status_code,value> serviceUnavailableResult {
-    //       do_request (methods::PUT,
-    //                   string(BasicFixture::addr)
-    //                   + un_friend_user + "/"
-    //                   + BasicFixture::userid + "/"
-    //                   + statusNormal)};
-    // CHECK_EQUAL (serviceUnavailableResult.first, status_codes::ServiceUnavailable);
-
+    cout << "UpdateStatus returned status_code: " << forbiddenResult.first << endl;
+    CHECK_EQUAL (status_codes::Forbidden, forbiddenResult.first);
   }
 }
+
 
 SUITE(GET) {
   // ReadFriendList
   // To check if ReadFriendList returns the correct Friends list, our group uses
   // shell scripts to print Friends from DataTable and do a manual check
   TEST_FIXTURE(BasicFixture, ReadFriendList){
-    cout << "PushStatusLarge" << endl;
+    cout << "ReadFriendList" << endl;
     pair<status_code,value> result {
-          do_request (methods::PUT,
-                      string(BasicFixture::addr)
+          do_request (methods::GET,
+                      user_def_url
                       + read_friend_list + "/"
-                      + BasicFixture::userid)};
-    CHECK_EQUAL (result.first, status_codes::OK);
+                      + string(BasicFixture::userid))};
+    cout << "ReadFriendList returned status_code: " << result.first << endl;
+    CHECK_EQUAL (status_codes::OK, result.first);
   }
 }
 

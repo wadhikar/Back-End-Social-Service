@@ -324,6 +324,11 @@ void handle_get(http_request message) {
           dataRow = v->second.str();
         }
       }
+      cout << "it->row_key() = " << it->row_key() << endl;
+      cout << "passwordVector[0] = " << passwordVector[0] << endl;
+      cout << "paths[1] = " << paths[1] << endl;
+      cout << "passToStore = " << passToStore << endl;
+
       if(it->row_key() == paths[1] && passwordVector[0] == passToStore){
           //if the userID, and its password matches, return the token with permission of read and write
           cloud_table table2 {table_cache.lookup_table(data_table_name)};

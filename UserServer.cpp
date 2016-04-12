@@ -67,7 +67,7 @@ using web::http::experimental::listener::http_listener;
 
 using prop_vals_t = vector<pair<string,value>>;
 
-constexpr const char* user_def_url = "http://localhost:34568";
+constexpr const char* user_def_url = "http://localhost:34572";
 
 const string auth_def_url = "http://localhost:34570";
 const string basic_def_url = "http://localhost:34568";
@@ -162,9 +162,6 @@ void handle_post(http_request message) {
   // Store userid parameter
   string userid_name {paths[1]};
 
-  // To store password from request
-  vector<string> passwordInRequest;
-
   // Flag for user in usersSignedIn
   bool userFound {false};
 
@@ -175,42 +172,49 @@ void handle_post(http_request message) {
     }
   }
 
+  unordered_map<string,string> json_body {get_json_body (message)};
+  string passFromBody {json_body["Password"]};
+
+
   if ( paths[0] == sign_on ) {
 
-    unordered_map<string,string> json_body {get_json_body (message)};
+    // No password sent
+    if ( json_body.size() == 0 ) {
+      message.reply(status_codes::BadRequest);
+      return;
+    }
 
-    // Store password from given JSON body
-    for( auto v = json_body.begin(); v != json_body.end(); ++v ) {
-      // If JSON body has property "Password" then store the password
-      if (v->first == password_prop) {
-        // Adds password to vector
-        passwordInRequest.push_back(v->second);
-      }
+    // incorrect number of parameters
+    if(paths.size() != 2){
+      message.reply(status_codes::BadRequest);
+      return;
     }
 
     pair<string,string> passwordPairToSend {
-      make_pair( password_prop, passwordInRequest[0] ) };
+      make_pair( password_prop, passFromBody ) };
 
     value passwordObjectToSend { build_json_value( passwordPairToSend ) };
 
     // If user is not signed in, then attempt to sign them on
-    if ( !userFound ) {
+    // if ( !userFound ) {
 
+      //cout << "user not signed in" << endl;
       // Send a GetUpdateData request to AuthServer
       pair<status_code,value> updateData {
                  do_request (methods::GET,
               		    auth_def_url + "/"
                     + get_update_data_op + "/"
-              		  + auth_table_name + "/"
-              		  + auth_table_partition + "/"
               		  + userid_name,
                       passwordObjectToSend)
                   };
+      cout << "GetUpdateData returned with status" << updateData.first << endl;
 
       if ( status_codes::NotFound == updateData.first) {
         message.reply(status_codes::NotFound);
         return;
       }
+
+      cout << "updateData Not Found" << endl;
 
       unordered_map<string,string> updateDataJSONBody {
         unpack_json_object( updateData.second )
@@ -235,6 +239,7 @@ void handle_post(http_request message) {
               		  + dataPartition->second + "/"
               		  + dataRow->second)
                   };
+      cout << "read_entity_auth returned with status: " << user_in_data_table.first << endl;
 
       if ( status_codes::NotFound == user_in_data_table.first) {
         message.reply(status_codes::NotFound);
@@ -243,42 +248,45 @@ void handle_post(http_request message) {
 
       // Once token has been created and user is confirmed to be in data table,
       // add user to usersSignedIn
-      usersSignedIn.insert(
+      if ( !userFound ) {
+        usersSignedIn.insert(
         {userid_name, make_tuple( dataToken->second,
                           dataPartition->second, dataRow->second )} );
-
-    }
-
-    // User is already signed in
-    else {
-
-      // Check if given password matches the one in auth table
-      // Don't have to check for status code b/c user has to be in auth table
-      // if they are already signed in
-      pair<status_code,value> passwordCheck {
-                 do_request (methods::GET,
-              		    auth_def_url + "/"
-                    + read_entity + "/"
-              		  + auth_table_name + "/"
-              		  + auth_table_partition + "/"
-              		  + userid_name)
-                  };
-      unordered_map<string,string> passwordCheckBody {
-        unpack_json_object( passwordCheck.second )
-      };
-
-      unordered_map<string,string>::const_iterator passwordInAuthTable {
-        passwordCheckBody.find(password_prop) };
-
-      if ( passwordInRequest[0] == passwordInAuthTable->second ) {
-        message.reply(status_codes::OK);
-        return;
       }
-      else {
-        message.reply(status_codes::NotFound);
-        return;
-      }
-    }
+      message.reply(status_codes::OK);
+      return;
+    // }
+
+    // // User is already signed in
+    // else {
+    //
+    //   // Check if given password matches the one in auth table
+    //   // Don't have to check for status code b/c user has to be in auth table
+    //   // if they are already signed in
+    //   pair<status_code,value> passwordCheck {
+    //              do_request (methods::GET,
+    //           		    auth_def_url + "/"
+    //                 + read_entity + "/"
+    //           		  + auth_table_name + "/"
+    //           		  + auth_table_partition + "/"
+    //           		  + userid_name)
+    //               };
+    //   unordered_map<string,string> passwordCheckBody {
+    //     unpack_json_object( passwordCheck.second )
+    //   };
+    //
+    //   unordered_map<string,string>::const_iterator passwordInAuthTable {
+    //     passwordCheckBody.find(password_prop) };
+    //
+    //   if ( passFromBody == passwordInAuthTable->second ) {
+    //     message.reply(status_codes::OK);
+    //     return;
+    //   }
+    //   else {
+    //     message.reply(status_codes::NotFound);
+    //     return;
+    //   }
+    // }
   }
 
   else if ( paths[0] == sign_off ) {
@@ -320,9 +328,17 @@ void handle_get(http_request message) {
   string user_id {paths[1]};
 
   if(paths[0] == read_friend_list){
-    auto isUserSignedIn = usersSignedIn.find(user_id);
+    // Flag for user in usersSignedIn
+    bool userFound {false};
 
-    if (isUserSignedIn == usersSignedIn.end()){
+    // Look for user in usersSignedIn
+    for ( auto it = usersSignedIn.begin(); it != usersSignedIn.end(); ++it ) {
+      if ( it->first == user_id ) {
+        userFound = true;
+      }
+    }
+
+    if (!userFound){
       message.reply(status_codes::Forbidden);
       return;
     }
@@ -333,7 +349,7 @@ void handle_get(http_request message) {
       string dataRow = get<2>(usersSignedIn[user_id]);
 
       pair<status_code,value> result {
-        do_request(methods::GET, basic_def_url + read_entity_auth + "/" +
+        do_request(methods::GET, basic_def_url + "/" + read_entity_auth + "/" +
         data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow)
       };
 
@@ -365,9 +381,17 @@ void handle_put(http_request message) {
   string status {paths[2]};
 
   if(paths[0] == update_status){
-    auto isUserSignedIn = usersSignedIn.find(user_id);
+    // Flag for user in usersSignedIn
+    bool userFound {false};
 
-    if (isUserSignedIn == usersSignedIn.end()){
+    // Look for user in usersSignedIn
+    for ( auto it = usersSignedIn.begin(); it != usersSignedIn.end(); ++it ) {
+      if ( it->first == user_id ) {
+        userFound = true;
+      }
+    }
+
+    if (!userFound){
       message.reply(status_codes::Forbidden);
       return;
     }
@@ -378,13 +402,13 @@ void handle_put(http_request message) {
       string dataRow = get<2>(usersSignedIn[user_id]);
 
       pair<status_code,value> result {
-        do_request(methods::GET, basic_def_url + read_entity_auth + "/" +
+        do_request(methods::GET, basic_def_url + "/" + read_entity_auth + "/" +
         data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow)
       };
 
       value json_status {build_json_value (vector<pair<string,string>> {make_pair("Status", status)})};
       pair<status_code,value> result2 {
-        do_request(methods::PUT, basic_def_url + update_entity_auth + "/" +
+        do_request(methods::PUT, basic_def_url + "/" + update_entity_auth + "/" +
         data_table_name + "/" + dataToken + "/" + dataPartition + "/" + dataRow, json_status)
       };
 
@@ -393,7 +417,7 @@ void handle_put(http_request message) {
 
       try {
         pair<status_code,value> result3 {
-          do_request(methods::POST, push_def_url + push_status + "/" +
+          do_request(methods::POST, push_def_url + "/" + push_status + "/" +
           dataPartition + "/" + dataRow + "/" + status, json_friends)
         };
       } catch (const web::uri_exception& e) {
@@ -415,8 +439,18 @@ void handle_put(http_request message) {
     string friend_full_name{paths[3]};
 
     //check if user is signed in
-    auto check_signed = usersSignedIn.find( user_id );
-    if( check_signed == usersSignedIn.end() ){
+    // Flag for user in usersSignedIn
+    bool userFound {false};
+
+    // Look for user in usersSignedIn
+    for ( auto it = usersSignedIn.begin(); it != usersSignedIn.end(); ++it ) {
+
+      if ( it->first == user_id ) {
+        userFound = true;
+      }
+    }
+
+    if( !userFound ){
       //not signed-in
       message.reply(status_codes::Forbidden);
       return;
@@ -428,9 +462,14 @@ void handle_put(http_request message) {
       string friend_row = get<2>(usersSignedIn[user_id]);
 
       pair<status_code,value> result {
-        do_request(methods::GET, basic_def_url + read_entity_auth+"/"+
+        do_request(methods::GET, basic_def_url + "/" + read_entity_auth+"/"+
           data_table_name+"/"+friend_token+"/"+friend_partition+"/"+friend_row)
       };
+
+      if( result.first == status_codes::NotFound ) {
+        message.reply(status_codes::NotFound);
+        return;
+      }
 
       string friend_list = get_json_object_prop(result.second, "Friends");
 
@@ -441,10 +480,10 @@ void handle_put(http_request message) {
 
       for(int i = 0; i < friends_list_val.size(); ++i){
         if(friends_list_val[i].first == friend_country && friends_list_val[i].second == friend_full_name){
-          cout<<"Already friend" << endl;
           checker = true;
         }
       }
+
       if(checker == true){
         //already friends
         //return OK anyways
@@ -461,7 +500,7 @@ void handle_put(http_request message) {
       value friend_json_object {build_json_value (vector<pair<string,string>>{make_pair("Friends",friend_list_new)})};
 
       pair<status_code,value> result_a{
-        do_request(methods::PUT, basic_def_url + update_entity_auth +"/"+
+        do_request(methods::PUT, basic_def_url + "/" + update_entity_auth +"/"+
           data_table_name + "/" + friend_token + "/" + friend_partition + "/"+ friend_row,friend_json_object)
       };
 
@@ -497,7 +536,7 @@ void handle_put(http_request message) {
 
       //Checking if the friend exist
       pair<status_code,value> check{
-        do_request(methods::GET, basic_def_url + read_entity_auth +"/"+
+        do_request(methods::GET, basic_def_url + "/" + read_entity_auth +"/"+
         data_table_name+"/"+unfriend_country+"/"+unfriend_full_name)
       };
 
@@ -507,7 +546,7 @@ void handle_put(http_request message) {
       }
 
       pair<status_code,value> result {
-        do_request(methods::GET, basic_def_url + read_entity_auth+"/"+
+        do_request(methods::GET, basic_def_url + "/" + read_entity_auth+"/"+
           data_table_name+"/"+unfriend_token+"/"+unfriend_partition+"/"+unfriend_row)
       };
 
@@ -526,7 +565,6 @@ void handle_put(http_request message) {
       }
       if(checker == false){
         //friend doesnt exist
-        cout << "Friend Does Not Exist" << endl;
         //return OK anyways
         message.reply(status_codes::OK);
         return;
@@ -536,7 +574,7 @@ void handle_put(http_request message) {
         string friend_list_new = friends_list_to_string(friends_list_val);
         value friend_json_object {build_json_value (vector<pair<string,string>>{make_pair("Friends",friend_list_new)})};
         pair<status_code,value> result_a{
-          do_request(methods::PUT, basic_def_url + update_entity_auth +"/"+
+          do_request(methods::PUT, basic_def_url + "/" + update_entity_auth +"/"+
             data_table_name + "/" + unfriend_token + "/" + unfriend_partition + "/"+ unfriend_row,friend_json_object)
         };
         //successfully un-friended

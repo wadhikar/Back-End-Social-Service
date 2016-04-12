@@ -1,2 +1,2 @@
 #!/bin/bash
-curl --silent -X get $B/ReadEntityAdmin/AuthTable | ./authfields.py
+curl --silent -X get $D/ReadEntityAdmin/AuthTable | ./authfields.py
