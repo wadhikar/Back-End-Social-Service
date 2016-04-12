@@ -31,8 +31,14 @@ add_executable (basicserver BasicServer.cpp ServerUtils.cpp ServerUtils.h
   TableCache.cpp TableCache.h)
 target_link_libraries (basicserver ${REST} ${REST_LIBRARIES} ${STORE})
 
-add_executable (tester testmain.cpp tester.cpp)
+add_executable (tester testmain.cpp tester.cpp ClientUtils.cpp)
 target_link_libraries (tester ${REST} ${REST_LIBRARIES} ${STORE} ${TEST})
 
 add_executable (authserver AuthServer.cpp TableCache.cpp TableCache.h)
 target_link_libraries (authserver ${REST} ${REST_LIBRARIES} ${STORE})
+
+add_executable (userserver UserServer.cpp ClientUtils.cpp)
+target_link_libraries (userserver ${REST} ${REST_LIBRARIES})
+
+add_executable (pushserver PushServer.cpp ClientUtils.cpp)
+target_link_libraries (pushserver ${REST} ${REST_LIBRARIES})

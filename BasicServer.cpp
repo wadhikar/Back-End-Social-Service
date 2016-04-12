@@ -261,7 +261,7 @@ void handle_get(http_request message) {
       message.reply(status_codes::OK, value::array(key_vec));
       return;
     }
-    // GET specific entry: Partition == paths[1], Row == paths[2]
+    // GET specific entry: Partition == paths[2], Row == paths[3]
 
     table_operation retrieve_operation {table_operation::retrieve_entity(paths[2], paths[3])};
     table_result retrieve_result {table.execute(retrieve_operation)};
@@ -282,7 +282,7 @@ void handle_get(http_request message) {
       message.reply(status_codes::OK);
   }else if (paths[0] == read_entity_auth){
     //GET ReadEntityAuth
-    if(paths.size() < 5){//badrequest if not enough parameters
+    if(paths.size() != 5){//badrequest if not enough parameters
       message.reply(status_codes::BadRequest);
       return;
     }
