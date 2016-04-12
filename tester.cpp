@@ -17,6 +17,8 @@
 
 #include <UnitTest++/UnitTest++.h>
 
+#include "ClientUtils.h"
+
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -64,7 +66,15 @@ const string push_status {"PushStatus"};
 const string add_friend_user{"AddFriend"};
 const string un_friend_user{"UnFriend"};
 
-const string status1{"Hello"};
+const string statusNormal {"Hello"};
+const string statusLarge {"ThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatusThisIsALongStatus"}
+const string invalidValue {"invalidValue"};
+
+const bool falseBool {false};
+const bool trueBool {true};
+
+
+vector<pair<string,value>> bodyForTesting {};
 
 
 /*
@@ -851,10 +861,16 @@ public:
 
   static constexpr const char* row {"USA"};
   static constexpr const char* partition {"Franklin,Aretha"};
+  static constexpr const char* prop_friends {"Friends"};
+  static constexpr const char* prop_updates {"Updates"};
+  static constexpr const char* prop_status {"Status"};
+
+
+
   static constexpr const char* row2 {"Canada"};
-  static constexpr const char* partition2 {"Trudeau,Justin"};
+  static constexpr const char* partition2 {"Beiber,Justin"};
   static constexpr const char* row3 {"China"};
-  static constexpr const char* partition3 {"Trump,Donald"};
+  static constexpr const char* partition3 {"Yung,Soo"};
 
 
 public:
@@ -864,21 +880,16 @@ public:
     if (make_result != status_codes::Created && make_result != status_codes::Accepted) {
       throw std::exception();
     }
-    int put_result {put_entity (addr, table, partition, row, property, prop_val)};
+
+    bodyForTesting.push_back( make_pair( BasicFixture::prop_friends, value prop_val_friends {} ) );
+    bodyForTesting.push_back( make_pair( BasicFixture::prop_status, value prop_val_status {} ) );
+    bodyForTesting.push_back( make_pair( BasicFixture::prop_updates, value prop_val_updates {} ) );
+
+    int put_result {put_entity (addr, table, partition, row, bodyForTesting)};
     cerr << "put result " << put_result << endl;
     if (put_result != status_codes::OK) {
       throw std::exception();
     }
-    // Ensure userid and password in system
-    int user_result {put_entity (addr,
-                                 auth_table,
-                                 auth_table_partition,
-                                 userid,
-                                 auth_pwd_prop,
-                                 user_pwd)};
-    cerr << "user auth table insertion result " << user_result << endl;
-    if (user_result != status_codes::OK)
-      throw std::exception();
   }
 
   ~BasicFixture() {
@@ -891,65 +902,138 @@ public:
 
 
 SUITE(POST){
+
+  // SignOn and SignOff both alter usersSignedIn in UserServer which we cannot
+  // access with our tests, and the operations themselves already do the checking
+  // for whether the row and partition exist in AuthTable and DataTable, therefore
+  // we cannot test as extensively as other operations
+
   //SignOn
-  TEST_FIXTURE(BasicFixture, SignOn){
-    cout << "SignOn" << endl;
+  // Right password on first sign on in same session
+  TEST_FIXTURE(BasicFixture, SignOnFirstRightPass) {
+    cout << "SignOnFirstRightPass" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
                   string(BasicFixture::addr)
                   + sign_on + "/"
-                  + userid )};
+                  + userid,
+                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, user_pwd ))
+                  )};
     CHECK_EQUAL (result.first, status_codes::OK);
-    //wrong user id
-    pair<status_code,value> notFoundResult {
-      do_request (methods::POST,
-                  string(BasicFixture::addr)
-                  + sign_on + "/"
-                  + "wrong" )};
-    CHECK_EQUAL (notFoundResult.first, status_codes::NotFound);
   }
-  //SignOff
-  TEST_FIXTURE(BasicFixture, SignOff){
-    cout << "SignOff" << endl;
+
+  // Wrong password on first sign on in same session
+  TEST_FIXTURE(BasicFixture, SignOnFirstWrongPass) {
+    cout << "SignOnFirstWrongPass" << endl;
+    pair<status_code,value> result {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_on + "/"
+                  + userid ),
+                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, invalidValue ))
+                  };
+    CHECK_EQUAL (result.first, status_codes::NotFound);
+  }
+
+  // Right password on second sign on in same session
+  TEST_FIXTURE(BasicFixture, SignOnSecondRightPass) {
+    cout << "SignOnSecondRightPass" << endl;
+    pair<status_code,value> result {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_on + "/"
+                  + userid ),
+                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, user_pwd ))
+                  };
+    CHECK_EQUAL (result.first, status_codes::NotFound);
+  }
+
+  // Wrong password on second sign on in same session
+  TEST_FIXTURE(BasicFixture, SignOnSecondWrongPass) {
+    cout << "SignOnSecondWrongPass" << endl;
+    pair<status_code,value> result {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + sign_on + "/"
+                  + userid ),
+                  build_json_value( make_pair( BasicFixture::auth_pwd_prop, invalidValue ))
+                  };
+    CHECK_EQUAL (result.first, status_codes::NotFound);
+  }
+
+  // SignOff
+  // SignOff with active user session
+  TEST_FIXTURE(BasicFixture, SignOffActive) {
+    cout << "SignOffActive" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
                   string(BasicFixture::addr)
                   + sign_off + "/"
                   + userid )};
     CHECK_EQUAL (result.first, status_codes::OK);
-    //wrong user id
-    pair<status_code,value> notFoundResult {
+  }
+
+
+  // Inactive user AKA a nonexisting user
+  TEST_FIXTURE(BasicFixture, SignOffInactive) {
+    cout << "SignOffInactive" << endl;
+    pair<status_code,value> result {
       do_request (methods::POST,
                   string(BasicFixture::addr)
                   + sign_off + "/"
-                  + "wrongUserid" )};
-    CHECK_EQUAL (notFoundResult.first, status_codes::NotFound);
+                  + invalidValue )};
+    CHECK_EQUAL (result.first, status_codes::NotFound);
   }
 
   // Push Status
-  TEST_FIXTURE(BasicFixture, PushStatus){
-    cout << "SignOff" << endl;
+  // For checking if status was pushed to friends, our group used shell scripts
+  // to print out the DataTable to manually check if the status was added or not
+  // Do PushStatus on an empty updates property
+  TEST_FIXTURE(BasicFixture, PushStatusEmpty) {
+    cout << "PushStatusEmpty" << endl;
     pair<status_code,value> result {
       do_request (methods::POST,
                   string(BasicFixture::addr)
                   + push_status + "/"
                   + BasicFixture::partition + "/"
                   + BasicFixture::row + "/"
-                  + status1 )};
+                  + statusNormal )};
     CHECK_EQUAL (result.first, status_codes::OK);
-    //wrong user id
-    pair<status_code,value> PushStatus {
+  }
+
+  // Do PushStatus on a normal sized updates property
+  TEST_FIXTURE(BasicFixture, PushStatusNormal) {
+    cout << "PushStatusNormal" << endl;
+    pair<status_code,value> result {
       do_request (methods::POST,
                   string(BasicFixture::addr)
                   + push_status + "/"
-                  + "wrongUserid" )};
-    CHECK_EQUAL (notFoundResult.first, status_codes::NotFound);
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/"
+                  + statusNormal )};
+    CHECK_EQUAL (result.first, status_codes::OK);
   }
+
+  // Do PushStatus on a large updates property
+  TEST_FIXTURE(BasicFixture, PushStatusLarge) {
+    cout << "PushStatusLarge" << endl;
+    pair<status_code,value> result {
+      do_request (methods::POST,
+                  string(BasicFixture::addr)
+                  + push_status + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/"
+                  + statusNormal )};
+    CHECK_EQUAL (result.first, status_codes::OK);
+  }
+}
 
 SUITE(PUT) {
 
-  //Addfriend
-  TEST_FIXTURE(BasicFixture, AddFriend){
+  // Addfriend
+  // AddFriend with a normal sized Friends property val
+  TEST_FIXTURE(BasicFixture, AddFriendNormal) {
+    cout << "AddFriendNormal" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
@@ -959,20 +1043,139 @@ SUITE(PUT) {
                       + BasicFixture::row2 + "/"
                       + BasicFixture::row)};
     CHECK_EQUAL (result.first, status_codes::OK);
-    //Forbidden, wrong partition. having wrong row would have same result
-    //so test of row in unnecessary
-    pair<status_code,value> forbiddenResult{
+
+    pair<status_code,value> resultAdd {
+      do_request (methods::GET,
+                  string(BasicFixture::addr)
+                  + read_entity_admin + "/"
+                  + BasicFixture::addr + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/")
+    };
+    CHECK_EQUAL ( resultAdd.first, status_codes::OK );
+
+    string resultAddFriendsList {
+      get_json_object_prop( resultAdd.second, BasicFixture::prop_friends )
+    };
+
+    friends_list_t parsedFriendsList {
+      parse_friends_list( resultAddFriendsList )
+    };
+
+    bool friendFound {false};
+
+    for ( auto it = parsedFriendsList.begin(); it != parsedFriendsList.end(); ++it ) {
+      if ( it->second == BasicFixture::partition2  ) {
+        friendFound = true;
+        break;
+      }
+    }
+    CHECK( friendFound );
+  }
+
+  // AddFriend with an empty Friends property val
+  TEST_FIXTURE(BasicFixture, AddFriendEmpty) {
+    cout << "AddFriendEmpty" << endl;
+    pair<status_code,value> result {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
                       + add_friend_user + "/"
-                      + "wrongUserid" + "/"
+                      + BasicFixture::userid + "/"
                       + BasicFixture::partition2 + "/"
                       + BasicFixture::row2 + "/"
                       + BasicFixture::row)};
-    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
+    CHECK_EQUAL (result.first, status_codes::OK);
+
+    pair<status_code,value> resultAdd {
+      do_request (methods::GET,
+                  string(BasicFixture::addr)
+                  + read_entity_admin + "/"
+                  + BasicFixture::addr + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/")
+    };
+    CHECK_EQUAL ( resultAdd.first, status_codes::OK );
+
+    string resultAddFriendsList {
+      get_json_object_prop( resultAdd.second, BasicFixture::prop_friends )
+    };
+
+    friends_list_t parsedFriendsList {
+      parse_friends_list( resultAddFriendsList )
+    };
+
+    bool friendFound {false};
+
+    for ( auto it = parsedFriendsList.begin(); it != parsedFriendsList.end(); ++it ) {
+      if ( it->second == BasicFixture::partition2  ) {
+        friendFound = true;
+        break;
+      }
+    }
+    CHECK( friendFound );
   }
-  //UnFriend
-  TEST_FIXTURE(BasicFixture, UnFriend){
+
+  // AddFriend with a large Friends property val
+  TEST_FIXTURE(BasicFixture, AddFriendLarge) {
+    cout << "AddFriendEmpty" << endl;
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + add_friend_user + "/"
+                      + BasicFixture::userid + "/"
+                      + BasicFixture::partition2 + "/"
+                      + BasicFixture::row2 + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+
+    pair<status_code,value> resultAdd {
+      do_request (methods::GET,
+                  string(BasicFixture::addr)
+                  + read_entity_admin + "/"
+                  + BasicFixture::addr + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/")
+    };
+    CHECK_EQUAL ( resultAdd.first, status_codes::OK );
+
+    string resultAddFriendsList {
+      get_json_object_prop( resultAdd.second, BasicFixture::prop_friends )
+    };
+
+    friends_list_t parsedFriendsList {
+      parse_friends_list( resultAddFriendsList )
+    };
+
+    bool friendFound {false};
+
+    for ( auto it = parsedFriendsList.begin(); it != parsedFriendsList.end(); ++it ) {
+      if ( it->second == BasicFixture::partition2  ) {
+        friendFound = true;
+        break;
+      }
+    }
+    CHECK( friendFound );
+  }
+
+  // Forbidden AddFriend
+  TEST_FIXTURE(BasicFixture, AddFriendForbidden) {
+      cout << "AddFriendForbidden" << endl;
+    pair<status_code,value> result{
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + add_friend_user + "/"
+                      + invalidValue + "/"
+                      + BasicFixture::partition2 + "/"
+                      + BasicFixture::row2 + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (result.first, status_codes::Forbidden);
+  }
+
+  // UnFriend returns status_code::OK even if friend was not in Friends initially
+  // therefore checking the Friends after UnFriend is unnecessary
+  // UnFriend on an empty Friends list
+  TEST_FIXTURE(BasicFixture, UnFriendEmpty) {
+    cout << "UnFriendEmpty" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
@@ -982,36 +1185,144 @@ SUITE(PUT) {
                       + BasicFixture::row + "/"
                       + BasicFixture::row)};
     CHECK_EQUAL (result.first, status_codes::OK);
-    //Forbidden, wrong partition. having wrong row would have same result
-    //so test of row in unnecessary
-    pair<status_code,value> forbiddenResult {
+  }
+
+  // UnFriend on a normal sized Friends list
+  TEST_FIXTURE(BasicFixture, UnFriendNormal) {
+    cout << "UnFriendNormal" << endl;
+    pair<status_code,value> result {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
                       + un_friend_user + "/"
                       + BasicFixture::userid + "/"
-                      + "WrongPartition" + "/"
+                      + BasicFixture::partition + "/"
+                      + BasicFixture::row + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+  }
+
+  // UnFriend on a large Friends list
+  TEST_FIXTURE(BasicFixture, UnFriendLarge) {
+    cout << "UnFriendLarge" << endl;
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + un_friend_user + "/"
+                      + BasicFixture::userid + "/"
+                      + BasicFixture::partition + "/"
+                      + BasicFixture::row + "/"
+                      + BasicFixture::row)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+  }
+
+  //Forbidden UnFriend with an inactive user aka incorrect user
+  TEST_FIXTURE(BasicFixture, UnFriendLarge) {
+    cout << "UnFriendLarge" << endl;
+    pair<status_code,value> forbiddenResult {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + un_friend_user + "/"
+                      + invalidValue + "/"
+                      + BasicFixture::partition + "/"
                       + BasicFixture::row + "/"
                       + BasicFixture::row)};
     CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
   }
-  //Update Status
-  TEST_FIXTURE(BasicFixture, UpdateStatus){
+
+  // Update Status
+  // Do UpdateStatus with an empty status
+  TEST_FIXTURE(BasicFixture, UpdateStatusEmpty){
+    cout << "UpdateStatusEmpty" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
                       + update_status + "/"
                       + BasicFixture::userid + "/"
-                      + status1)};
+                      + "")};
     CHECK_EQUAL (result.first, status_codes::OK);
-    //Forbidden, wrong partition. having wrong row would have same result
-    //so test of row in unnecessary
+
+    pair<status_code,value> resultUpdateStatus {
+      do_request (methods::GET,
+                  string(BasicFixture::addr)
+                  + read_entity_admin + "/"
+                  + BasicFixture::addr + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/")
+    };
+    CHECK_EQUAL ( resultUpdateStatus.first, status_codes::OK );
+
+    string updatedStatus {
+      get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
+    };
+    CHECK_EQUAL( "", updatedStatus );
+
+  }
+
+  // Do UpdateStatus with a normal sized status
+  TEST_FIXTURE(BasicFixture, UpdateStatusNormal) {
+    cout << "UpdateStatusNormal" << endl;
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + update_status + "/"
+                      + BasicFixture::userid + "/"
+                      + statusNormal)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+
+    pair<status_code,value> resultUpdateStatus {
+      do_request (methods::GET,
+                  string(BasicFixture::addr)
+                  + read_entity_admin + "/"
+                  + BasicFixture::addr + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/")
+    };
+    CHECK_EQUAL ( resultUpdateStatus.first, status_codes::OK );
+
+    string updatedStatus {
+      get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
+    };
+    CHECK_EQUAL( statusNormal, updatedStatus );
+  }
+
+  // Do UpdateStatus with a large sized status
+  TEST_FIXTURE(BasicFixture, UpdateStatusLarge) {
+    cout << "UpdateStatusLarge" << endl;
+    pair<status_code,value> result {
+          do_request (methods::PUT,
+                      string(BasicFixture::addr)
+                      + update_status + "/"
+                      + BasicFixture::userid + "/"
+                      + statusLarge)};
+    CHECK_EQUAL (result.first, status_codes::OK);
+
+    pair<status_code,value> resultUpdateStatus {
+      do_request (methods::GET,
+                  string(BasicFixture::addr)
+                  + read_entity_admin + "/"
+                  + BasicFixture::addr + "/"
+                  + BasicFixture::partition + "/"
+                  + BasicFixture::row + "/")
+    };
+    CHECK_EQUAL ( resultUpdateStatus.first, status_codes::OK );
+
+    string updatedStatus {
+      get_json_object_prop( resultUpdateStatus.second, BasicFixture::prop_status )
+    };
+    CHECK_EQUAL( statusLarge, updatedStatus );
+  }
+
+  // Forbidden status code with inactive user aka incorrect user
+  TEST_FIXTURE(BasicFixture, UpdateStatusLarge) {
+    cout << "UpdateStatusLarge" << endl;
     pair<status_code,value> forbiddenResult {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
                       + un_friend_user + "/"
-                      + "InvalidUser" + "/"
-                      + status1)};
+                      + invalidValue + "/"
+                      + statusNormal)};
     CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
+  }
 
     // Service unavailable test for when push server is down
     // pair<status_code,value> serviceUnavailableResult {
@@ -1019,7 +1330,7 @@ SUITE(PUT) {
     //                   string(BasicFixture::addr)
     //                   + un_friend_user + "/"
     //                   + BasicFixture::userid + "/"
-    //                   + status1)};
+    //                   + statusNormal)};
     // CHECK_EQUAL (serviceUnavailableResult.first, status_codes::ServiceUnavailable);
 
   }
@@ -1028,23 +1339,14 @@ SUITE(PUT) {
 SUITE(GET) {
   //ReadFriendList
   TEST_FIXTURE(BasicFixture, ReadFriendList){
+    cout << "PushStatusLarge" << endl;
     pair<status_code,value> result {
           do_request (methods::PUT,
                       string(BasicFixture::addr)
                       + read_friend_list + "/"
                       + BasicFixture::userid)};
     CHECK_EQUAL (result.first, status_codes::OK);
-
-  TEST_FIXTURE(BasicFixture, UpdateStatus){
-    pair<status_code,value> forbiddenResult {
-          do_request (methods::PUT,
-                      string(BasicFixture::addr)
-                      + read_friend_list + "/"
-                      + "WrongUserid")};
-    CHECK_EQUAL (forbiddenResult.first, status_codes::Forbidden);
-}
-
-
+  }
 }
 
 // SUITE(UPDATE_AUTH) {
